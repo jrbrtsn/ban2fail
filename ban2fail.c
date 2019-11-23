@@ -290,10 +290,6 @@ main(int argc, char **argv)
           * don't need to be copied.
           */
 
-         /* We're done with disk I/O, so release lock */
-         flock(lock_fd, LOCK_UN);
-         ez_close(lock_fd);
-         lock_fd= -1;
       }
 
       { /* Check cache for logType directories not in our current map */
@@ -320,6 +316,11 @@ main(int argc, char **argv)
          }
          ez_closedir(dir);
       }
+
+      /* We're done with disk I/O, so release lock */
+      flock(lock_fd, LOCK_UN);
+      ez_close(lock_fd);
+      lock_fd= -1;
 
       unsigned nFound= 0;
       MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_offenseCount, &nFound);
