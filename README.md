@@ -38,7 +38,7 @@ LOGTYPE auth {
 
 
 Syntax in the config file is pretty much the same as the nftables syntax. All
-keywords must be in upper case.  Any values in the key-\>value pairs have
+keywords must be in upper case.  Any values in the key=value pairs have
 whitespace stripped from the beginning and end of the line. Since there is no
 escaping of characters going on, regular expressions are WYSIWYG.
 
@@ -91,15 +91,15 @@ with the -c flag.
 
 ### Testing
 
-In test mode (-t flags) the presumption is that you are testing a modified
+In test mode (-t flag) the presumption is that you are testing a modified
 configuration which is not yet in place, and that you don't want to disturb the
 production setup. This is how you might do that:
 
 `ban2fail -t myNew.cfg -a`
 
 No iptables rules will be modified. You will be shown in the listing which
-addresses would be (un)blocked if *ban2fail* was running in production mode, and
-the contents of "myNew.cfg" was placed into "/etc/ban2fail/ban2fail.cfg".
+addresses would be (un)blocked if the contents of "myNew.cfg" was in place, and
+*ban2fail* was running in production mode.
 
 When you are happy with the new configuration, copy it into place, and the the
 iptable rule changes will be realized the next time *ban2fail* runs.
@@ -107,8 +107,15 @@ iptable rule changes will be realized the next time *ban2fail* runs.
 ## Building the Project
 
 I've tested *ban2fail* on Debian Buster, but it should compile on just about any
-modern Linux distro. It uses *libgeoip* to identify the country of origin
-for IP addresses, and *libz* to read compressed log files. Build and install like so:
+modern Linux distro. It uses the following libraries:
+
++*libcrypto* for md5 checksums
+
++*libgeoip* to identify the country of origin of IP addresses
+
++*libz* to read compressed log files
+
+Build and install like so:
 
 ```
 make release
