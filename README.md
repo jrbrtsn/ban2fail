@@ -42,6 +42,11 @@ keywords must be in upper case.  Any values in the key=value pairs have
 whitespace stripped from the beginning and end of the line. Since there is no
 escaping of characters going on, regular expressions are WYSIWYG.
 
+Finding typos and so forth in the config file is easy; use the -v command flag
+to print all unrecognized content (besides comments).
+
+`ban2fail -v`
+
 The only way to alter the default blocking behavior is with a MAX\_OFFENSES
 clause. This clause allows you specify how many offenses are tolerated before an
 IP is blocked. Offenses will naturally disappear as old logfiles are deleted by

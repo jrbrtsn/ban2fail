@@ -86,7 +86,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 9,
-      .patch= 4
+      .patch= 5
    }
 };
 
@@ -212,6 +212,7 @@ main(int argc, char **argv)
 "  -a\t\tList results by Address\n"
 "  -c\t\tlist results by Country\n"
 "  -t confFile\tTest confFile, do not apply iptables rules\n"
+"  -v\t\tVerbose information about unrecognized configuration info\n"
 "  --version\tprint the version number and exit.\n"
          , argv[0]
          );
