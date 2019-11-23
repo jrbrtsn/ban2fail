@@ -107,7 +107,8 @@ addresses would be (un)blocked if the contents of "myNew.cfg" was in place, and
 *ban2fail* was running in production mode.
 
 When you are happy with the new configuration, copy it into place, and the the
-iptable rule changes will be realized the next time *ban2fail* runs.
+iptable rule changes will be realized the next time *ban2fail* runs in
+production mode.
 
 ## Building the Project
 
