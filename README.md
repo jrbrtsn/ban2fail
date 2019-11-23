@@ -13,7 +13,7 @@ distributed attacks, and that I would need an app that could run several times a
 minute on my rather modest Linode virtual server to have a chance of stopping
 them. I hope you find this code useful.
 
-##Configuration
+## Configuration
 
 *ban2fail* works from a configuration file found at
 "/etc/ban2fail/ban2fail.cfg".  The overarching premise is that if any REGEX
@@ -73,7 +73,7 @@ If you recieve a complaint about an address unjustly getting blocked, place it
 in one of the MAX\_OFFENSES blocks, and the IP will be unblocked the next time
 *ban2fail* runs.
 
-##Working with *ban2fail*
+## Working with *ban2fail*
 
 There are two primary modes in which *ban2fail* is used:
 
@@ -81,7 +81,7 @@ There are two primary modes in which *ban2fail* is used:
 
 * Testing mode, where modifications to blocking rules are indicated.
 
-###Production
+### Production
 
 In production mode it is expected that *ban2fail* is running from a cron job,
 and no output is printed unless addresses are (un)blocked. It is also possible
@@ -89,7 +89,7 @@ to generate a listing of addresses, offense counts, and status with the -a
 command flag. Likewise, a listing of countries and offense counts is available
 with the -c flag.
 
-###Testing
+### Testing
 
 In test mode (-t flags) the presumption is that you are testing a modified
 configuration which is not yet in place, and that you don't want to disturb the
@@ -104,7 +104,7 @@ the contents of "myNew.cfg" was placed into "/etc/ban2fail/ban2fail.cfg".
 When you are happy with the new configuration, copy it into place, and the the
 iptable rule changes will be realized the next time *ban2fail* runs.
 
-##Building the Project
+## Building the Project
 
 I've tested *ban2fail* on Debian Buster, but it should compile on just about any
 modern Linux distro. It uses the GeoIP package to identify the country of origin
