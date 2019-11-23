@@ -97,7 +97,7 @@ production setup. This is how you might do that:
 
 `ban2fail -t myNew.cfg -a`
 
-No iptables rules will be modified. You will shown in the listing which
+No iptables rules will be modified. You will be shown in the listing which
 addresses would be (un)blocked if *ban2fail* was running in production mode, and
 the contents of "myNew.cfg" was placed into "/etc/ban2fail/ban2fail.cfg".
 
@@ -107,8 +107,8 @@ iptable rule changes will be realized the next time *ban2fail* runs.
 ## Building the Project
 
 I've tested *ban2fail* on Debian Buster, but it should compile on just about any
-modern Linux distro. It uses the GeoIP package to identify the country of origin
-for IP addresses. Build and install like so:
+modern Linux distro. It uses *libgeoip* to identify the country of origin
+for IP addresses, and *libz* to read compressed log files. Build and install like so:
 
 ```
 make release
