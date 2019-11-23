@@ -7,7 +7,7 @@ iptables filtering. As the name implies, *ban2fail* was inspired by the popular
 *fail2ban* project (http://fail2ban.org).
 
 *ban2fail* started with a few hours of C hacking after my mail server was
-exploited to deliver spam by others who had cracked a user's SMTP send password.
+exploited to deliver spam for others who had cracked a user's SMTP send password.
 After inspecting the log files I realized that crackers are now using widely
 distributed attacks, and that I would need an app that could run several times a
 minute on my rather modest Linode virtual server to have a chance of stopping
