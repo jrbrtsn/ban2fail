@@ -76,7 +76,7 @@ MAX_OFFENSES -1 {
 
 If you recieve a complaint about an address unjustly getting blocked, place it
 in one of the MAX\_OFFENSES blocks, and the IP will be unblocked the next time
-*ban2fail* runs.
+*ban2fail* runs in production mode.
 
 ## Working with *ban2fail*
 
@@ -111,14 +111,14 @@ iptable rule changes will be realized the next time *ban2fail* runs.
 
 ## Building the Project
 
-I've tested *ban2fail* on Debian Buster, but it should compile on just about any
-modern Linux distro. It uses the following libraries:
+I've tested *ban2fail* only on Debian Buster, but it should compile on just
+about any modern Linux distro. It uses the following libraries:
 
-+*libcrypto* for md5 checksums
++ *libcrypto* for md5 checksums
 
-+*libgeoip* to identify the country of origin of IP addresses
++ *libgeoip* to identify the country of origin for IP addresses
 
-+*libz* to read compressed log files
++ *libz* to read compressed log files
 
 Build and install like so:
 
