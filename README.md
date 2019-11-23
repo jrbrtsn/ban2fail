@@ -21,7 +21,7 @@ appearing in a LOGTYPE clause matches a line in an associated log file, then by
 default that IP will be blocked.
 
 
-`
+```
 LOGTYPE auth {
    DIR= /var/log
    PREFIX= auth.log
@@ -34,7 +34,7 @@ LOGTYPE auth {
 
    REGEX= in\.qpopper.*authentication failure.*tty=([0-9.]+)
 }
-`
+```
 
 
 Syntax in the config file is pretty much the same as the nftables syntax. All
@@ -47,7 +47,7 @@ clause. This clause allows you specify how many offenses are tolerated before an
 IP is blocked. Offenses will naturally disappear as old logfiles are deleted by
 *logrotate*.
 
-`
+```
 # Take it easy on home boys
 MAX_OFFENSES 5 {
    COUNTRY= US
@@ -67,7 +67,7 @@ MAX_OFFENSES -1 {
 # Some user
    IP= 173.236.196.36
 }
-`
+```
 
 If you recieve a complaint about an address unjustly getting blocked, place it
 in one of the MAX\_OFFENSES blocks, and the IP will be unblocked the next time
@@ -110,10 +110,11 @@ I've tested *ban2fail* on Debian Buster, but it should compile on just about any
 modern Linux distro. It uses the GeoIP package to identify the country of origin
 for IP addresses. Build and install like so:
 
-`
+```
 make release
 sudo make install
-`
+```
+
 The executable will be placed in "/usr/local/bin".
 
 
