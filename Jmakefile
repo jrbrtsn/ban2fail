@@ -1,0 +1,49 @@
+baseDir := ~
+libsDir := $(baseDir)/libs
+projectName := ban2fail
+versions := debug release
+cc_exe := ban2fail
+install_dir := /usr/local/bin
+
+
+########################################
+# Set up sources & libraries here.     #
+########################################
+
+ifeq ($(exe), ban2fail)
+src := \
+       ban2fail.c \
+       cfgmap.c \
+       cntry.c \
+       ez_dirent.c \
+       ez_gzfile.c \
+       ez_stdio.c \
+       ez_stdlib.c \
+       iptables.c \
+       logType.c \
+       logEntry.c \
+       logFile.c \
+       map.c \
+       maxoff.c \
+       ptrvec.c \
+       str.c \
+       util.c \
+
+   libs :=  z crypto GeoIP
+endif
+
+########################################
+# Set up custom compile flags here.    #
+########################################
+ifeq ($(version),debug)
+local_cppflags := $(local_cppflags) -D_DEBUG -DDEBUG -std=gnu99
+local_codeflags := -g2 -O0 -Wreturn-type -Wformat -Wchar-subscripts -Wparentheses -Wcast-qual -Wmissing-declarations
+local_ldflags := $(local_ldflags) -L$(libsDir)/$(version)
+endif
+
+ifeq ($(version),release)
+local_cppflags := $(local_cppflags) -DNDEBUG -std=gnu99
+local_codeflags :=  -g0 -O3 -Wreturn-type -Wformat -Wchar-subscripts -Wparentheses -Wcast-qual -Wmissing-declarations
+local_ldflags := $(local_ldflags) -L$(libsDir)/$(version)
+endif
+
