@@ -1,3 +1,1 @@
-Add ipv6 GeoIP support
-Implement CIDR notation for IP
-
+Any ideas?
