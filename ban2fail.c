@@ -85,8 +85,8 @@ struct Global G= {
 
    .version= {
       .major= 0,
-      .minor= 9,
-      .patch= 7
+      .minor= 10,
+      .patch= 0
    }
 };
 
@@ -376,7 +376,7 @@ main(int argc, char **argv)
             /* Print out only for list option */
             if(G.flags & GLB_LIST_ADDR_FLG) {
 
-               ez_fprintf(stdout, "%-15s: %5u / %u\t offenses %s (%s)\n"
+               ez_fprintf(stdout, "%-15s\t%5u/%-4u offenses %s (%s)\n"
                      , e->addr
                      , e->count
                      , nAllowed

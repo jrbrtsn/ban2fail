@@ -40,6 +40,7 @@
 #define LOCKPATH "/run/lock/ban2fail"
 #define CACHEDIR "/var/cache/ban2fail"
 #define IPTABLES "/usr/sbin/iptables" 
+#define IP6TABLES "/usr/sbin/ip6tables" 
 #define GEOIP_DB "/usr/share/GeoIP/GeoIP.dat"
 #define GEOIP6_DB "/usr/share/GeoIP/GeoIPv6.dat"
 
