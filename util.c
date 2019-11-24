@@ -358,7 +358,7 @@ strbits(int64_t bits, unsigned nBytes)
  */
 {
    /* Rotating buffers so this can be used multiple times as arg to printf() */
-#define N_BUFS 5
+#define N_BUFS 8
 #define BUF_SZ 65
    static _Thread_local char bufArr[N_BUFS][BUF_SZ];
    static _Thread_local unsigned count;

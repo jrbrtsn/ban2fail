@@ -37,10 +37,11 @@
 
 /* Where to find stuff */
 #define CONFIGFILE "/etc/ban2fail/ban2fail.cfg"
-#define LOCKPATH "/var/run/lock/ban2fail"
+#define LOCKPATH "/run/lock/ban2fail"
 #define CACHEDIR "/var/cache/ban2fail"
 #define IPTABLES "/usr/sbin/iptables" 
 #define GEOIP_DB "/usr/share/GeoIP/GeoIP.dat"
+#define GEOIP6_DB "/usr/share/GeoIP/GeoIPv6.dat"
 
 
 /* Singleton static object with global visibility */

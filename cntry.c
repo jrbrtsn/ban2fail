@@ -30,7 +30,8 @@
 static struct {
 
    int is_init;
-   GeoIP *gip;
+   GeoIP *gip,
+         *gip6;
 
 } S;
 
@@ -49,6 +50,12 @@ init()
       eprintf("PANIC: GeoIP_open(\"%s\") failed!", GEOIP_DB);
       exit(EXIT_FAILURE);
    }
+
+   S.gip6= GeoIP_open(GEOIP6_DB, 0);
+   if(!S.gip6) {
+      eprintf("PANIC: GeoIP_open(\"%s\") failed!", GEOIP6_DB);
+      exit(EXIT_FAILURE);
+   }
 }
 
 const char*
@@ -58,6 +65,9 @@ COUNTRY_get_code(const char *addr)
  */
 {
    if(!S.is_init) init();
+
+   if(strchr(addr, ':'))
+         return GeoIP_country_code_by_addr_v6(S.gip6, addr);
 
    return GeoIP_country_code_by_addr(S.gip, addr);
 }
