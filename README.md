@@ -78,7 +78,7 @@ MAX_OFFENSES 3 {
 MAX_OFFENSES -1 {
 
 # me from home
-   IP= 205.144.171.37
+   IP= 205.144.171.37/20
 
 # Some user
    IP= 173.236.196.36
