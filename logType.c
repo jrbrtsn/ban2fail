@@ -37,7 +37,50 @@
 
 #define NOFFENSES_CACHED_FLG (1<<0)
 
+static int
+cmp_pvsort(const void *const* pp1, const void *const* pp2)
+/******************************************************************
+ * PTRVEC sort comaprision function to sort log file names "naturally".
+ */
+{
+   const char *path[2]= {
+      *((const char*const*)pp1),
+      *((const char*const*)pp2)
+   };
 
+   static int is_init;
+   static regex_t re;
+
+   /* Use a regular expression to pick-off the log file number, if any */
+   if(!is_init) {
+      is_init= 1;
+      regex_compile(&re, "\\.([[:digit:]]+)(\\.gz)?$", REG_EXTENDED);
+   }
+
+   int num[2]= {-1,-1};
+
+   for(unsigned i= 0; i < 2; ++i) {
+      /* Not interested in all the precedes the file name */
+      const char *fname= strrchr(path[i], '/');
+      assert(fname && *fname);
+      /* Skip the slash */
+      ++fname;
+      regmatch_t matchArr[2];
+      /* If no match, num[i] == -1 as initialized above */
+      if(regexec(&re, fname, 2, matchArr, 0)) continue;
+
+      /* Convert text to integer */
+      int rc= sscanf(fname+matchArr[1].rm_so, "%d", num+i);
+      assert(1 == rc);
+   }
+
+   /* Sort primarily by number */
+   if(num[0] < num[1]) return -1;
+   if(num[0] > num[1]) return 1;
+
+   /* If numbers are the same, resort to strcmp() */
+   return strcmp(path[0], path[1]);
+}
 
 #define LOGTYPE_proto_create(s, proto) \
   ((s)=(LOGTYPE_proto_constructor((s)=malloc(sizeof(LOGTYPE)), proto) ? (s) : ( s ? realloc(LOGTYPE_destructor(s),0) : 0 )))
@@ -52,8 +95,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
    int rc;
 
    /* Not reentrant! */
-   static char LogFname[PATH_MAX],
-               CacheDname[PATH_MAX],
+   static char CacheDname[PATH_MAX],
                CacheFname[PATH_MAX];
 
    memset(self, 0, sizeof(*self));
@@ -82,18 +124,40 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
    /* Keep the name of this logType's cache directory */
    rc= snprintf(CacheDname, sizeof(CacheDname), "%s/%s", G.cacheDir, LOGTYPE_cacheName(self));
 
-   { /*** Compute md5sum for each log file ***/
+   { /*** Compute md5sum for each log file, then scan of read from cache ***/
 
-      /* Open the logfile directory, look for candidate files */
-      DIR *dir= ez_opendir(self->dir);
-      struct dirent *entry;
+      static PTRVEC fname_vec;
 
-      while((entry= ez_readdir(dir))) {
+      PTRVEC_sinit(&fname_vec, 100);
 
-         /* Skip uninteresting entries */
-         if(!strcmp(".", entry->d_name) ||
-            !strcmp("..", entry->d_name) ||
-            strncmp(self->pfix, entry->d_name, pfix_len)) continue;
+      { /*--- Get file names from log directory and place then in a vector ---*/
+         static char LogFname[PATH_MAX];
+
+         /* Open the logfile directory, look for candidate files */
+         DIR *dir= ez_opendir(self->dir);
+         struct dirent *entry;
+
+         while((entry= ez_readdir(dir))) {
+
+            /* Skip uninteresting entries */
+            if(!strcmp(".", entry->d_name) ||
+               !strcmp("..", entry->d_name) ||
+               strncmp(self->pfix, entry->d_name, pfix_len)) continue;
+
+            snprintf(LogFname, sizeof(LogFname), "%s/%s", self->dir, entry->d_name);
+
+            /* Add log file name to the vector */
+            PTRVEC_addTail(&fname_vec, strdup(LogFname));
+
+         }
+         ez_closedir(dir);
+      }
+
+      PTRVEC_sort(&fname_vec, cmp_pvsort);
+
+      /* Now scan files in lexigraphical order */
+      char *log_fname;
+      while((log_fname= PTRVEC_remHead(&fname_vec))) {
 
          /* Now compute the checksum */
          static char buf[1024];
@@ -102,12 +166,9 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
 
          MD5_Init(&md5ctx);
 
-         snprintf(LogFname, sizeof(LogFname), "%s/%s", self->dir, entry->d_name);
-
-
          { /* Compute the checksum of the log file */
 
-            FILE *fh= ez_fopen(LogFname, "r");
+            FILE *fh= ez_fopen(log_fname, "r");
             int rc;
             while((rc= ez_fread(buf, 1, sizeof(buf), fh))) {
                MD5_Update(&md5ctx, buf, rc);
@@ -121,7 +182,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          }
 
          if(G.flags & GLB_PRINT_MASK) {
-            ez_fprintf(stdout, "Scanning \"%s\" ...", LogFname);
+            ez_fprintf(stdout, "Scanning \"%s\" ...", log_fname);
             fflush(stdout);
          }
 
@@ -135,7 +196,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
             /* Construct object from cache file */
             LOGFILE_cache_create(f, CacheFname);
             assert(f);
-            LOGFILE_set_logFilePath(f, LogFname);
+            LOGFILE_set_logFilePath(f, log_fname);
          } else {
 
             if(access(CacheDname, F_OK)) {
@@ -143,9 +204,9 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
             }
 
             /* Construct object from log file */
-            LOGFILE_log_create(f, proto, LogFname);
+            LOGFILE_log_create(f, proto, log_fname);
             assert(f);
-            LOGFILE_set_logFilePath(f, LogFname);
+            LOGFILE_set_logFilePath(f, log_fname);
             if(LOGFILE_writeCache(f, CacheFname))
                assert(0);
          }
@@ -160,10 +221,9 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          }
 
          MAP_addStrKey(&self->file_map, sumStr, f);
+
+         free(log_fname);
       }
-
-      ez_closedir(dir);
-
    }
 
    { /*** clean up unused cache files ***/
@@ -257,7 +317,7 @@ LOGTYPE_init(CFGMAP *h_map, char *pfix)
          const struct CFGMAP_tuple *tpl= rtn_arr + i; 
          struct target *tg= targetArr + i;
          tg->pattern= tpl->value;
-         if(regcomp(&tg->re, tg->pattern, REG_EXTENDED)) {   
+         if(regex_compile(&tg->re, tg->pattern, REG_EXTENDED)) {   
             eprintf("ERROR: regex_compile(\"%s\") failed.", tg->pattern);
             goto abort;
          }   
