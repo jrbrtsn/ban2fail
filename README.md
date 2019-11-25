@@ -11,7 +11,7 @@ was exploited to deliver spam for others who had cracked a user's SMTP send
 password. After inspecting the log files I realized that crackers are now using
 widely distributed attacks, and that I would need an app that could run several
 times a minute on my rather modest Linode virtual server to have a chance of
-stopping them. Here are the results for a typical scan on my wimpy server:
+stopping them. Here are the timing results for a typical scan on my wimpy server:
 
 ```
 real    0m0.119s
@@ -19,7 +19,7 @@ user    0m0.073s
 sys     0m0.047s
 ```
 
-I hope you find this code useful.
+Currently I am running *fail2ban* every 5 seconds. I hope you find this code useful.
 
 ## Configuration
 
