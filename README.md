@@ -95,7 +95,7 @@ There are two primary modes in which *ban2fail* is used:
 
 * Production mode, where iptables rules are modified.
 
-* Testing mode, where modifications to blocking rules are indicated.
+* Testing mode, where modifications to blocking rules are merely indicated.
 
 ### Production
 
