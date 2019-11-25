@@ -34,13 +34,16 @@ LOGTYPE auth {
    DIR= /var/log
    PREFIX= auth.log
 
-   REGEX= imapd.*Login failed.*\[([0-9.]+)\]$
+# imapd[20193]= Login failed user=redacted auth=redacted@nowhere.com host=[186.179.170.12]
+   REGEX= imapd.*Login failed.*\[([0-9.a-f:]+)\]$
 
-   REGEX= sshd.*Failed password.*from ([0-9.]+) port [0-9]+ ssh2$
+# sshd[6165]= Failed password for invalid user user from 185.224.137.201 port 44865 ssh2
+   REGEX= sshd.*Failed password.*from ([0-9.a-f:]+) port [0-9]+ ssh2$
 
-   REGEX= Unable to negotiate with ([0-9.]+) port
+# Unable to negotiate with 193.188.22.188 port ...
+#   REGEX= Unable to negotiate with ([0-9.]+) port
+   REGEX= Unable to negotiate with ([0-9.a-f:]+) port
 
-   REGEX= in\.qpopper.*authentication failure.*tty=([0-9.]+)
 }
 ```
 
