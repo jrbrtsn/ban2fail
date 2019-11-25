@@ -6,7 +6,10 @@
 # making reasonably sure there is no overlap.
 #
 
+BAN2FAIL=/usr/local/bin/ban2fail
 LOGFILE=/var/log/ban2fail.log
+#LOGFILE=/dev/pts/2
+PERIOD_SEC=5
 
 WHEN=$(date)
 
@@ -21,14 +24,15 @@ while true; do
 
   NOW_SEC=$(date +%s)
 
-  (( NOW_SEC - BEGIN_SEC > 45 )) && break
+  (( MAX_SEC= 60 - PERIOD_SEC - 1 ))
 
+  (( NOW_SEC - BEGIN_SEC > MAX_SEC )) && break
 
-  /usr/local/bin/ban2fail
+  $BAN2FAIL
 
   echo -n " $count" >>$LOGFILE
   FINISHED_SEC=$(date +%s)
-  (( SLEEP = 10 - FINISHED_SEC + NOW_SEC ))
+  (( SLEEP = 5 - FINISHED_SEC + NOW_SEC ))
 
   (( SLEEP < 1 )) && continue
   sleep $SLEEP
