@@ -86,7 +86,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 10,
-      .patch= 2
+      .patch= 3
    }
 };
 
@@ -352,26 +352,27 @@ main(int argc, char **argv)
             if(IPTABLES_is_currently_blocked(e->addr))
                flags |= BLOCKED_FLG;
 
-             int nAllowed= MAXOFF_allowed(e->addr);
+            int nAllowed= MAXOFF_allowed(e->addr);
 
-             if(-1 == nAllowed)
+            if(-1 == nAllowed)
                 flags |= WHITELIST_FLG;
 
-             if((-1 == nAllowed || e->count <= nAllowed) &&
-                (flags & BLOCKED_FLG)) {
+            if((flags & WHITELIST_FLG || e->count <= nAllowed) &&
+               (flags & BLOCKED_FLG))
+            {
 
-                  flags |= UNJUST_BLOCK_FLG;
-                  PTRVEC_addTail(&S.toUnblock_vec, e->addr);
-             }
+                flags |= UNJUST_BLOCK_FLG;
+                PTRVEC_addTail(&S.toUnblock_vec, e->addr);
+            }
 
-             if(!(flags & BLOCKED_FLG) &&
-                -1 != nAllowed &&
-                e->count > nAllowed)
-             {
+            if(!(flags & BLOCKED_FLG) &&
+               !(flags & WHITELIST_FLG) &&
+               e->count > nAllowed)
+            {
 
-                  flags |= WOULD_BLOCK_FLG;
-                  PTRVEC_addTail(&S.toBlock_vec, e->addr);
-             }
+                flags |= WOULD_BLOCK_FLG;
+                PTRVEC_addTail(&S.toBlock_vec, e->addr);
+            }
 
             /* Print out only for list option */
             if(G.flags & GLB_LIST_ADDR_FLG) {
