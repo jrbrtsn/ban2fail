@@ -55,7 +55,7 @@ enum {
 /*==================================================================*/
 struct cntryStat {
    char *cntry;
-   unsigned count;
+   unsigned nAddr;
 };
 
 /* Need this for initialization from configuration file */
@@ -86,7 +86,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 10,
-      .patch= 1
+      .patch= 2
    }
 };
 
@@ -108,7 +108,7 @@ static const struct bitTuple BlockBitTuples[]= {
 /*================ Local only static struct  ======================*/
 static struct {
 
-   MAP addr_map;
+   MAP addr2logEntry_map;
 
    CFGMAP cfgmap;
 
@@ -143,7 +143,7 @@ main(int argc, char **argv)
    MAP_constructor(&G.logType_map, 10, 10);
 
    // local
-   MAP_constructor(&S.addr_map, 1000, 200);
+   MAP_constructor(&S.addr2logEntry_map, 1000, 200);
 
    PTRVEC_constructor(&S.toBlock_vec, 100000);
    PTRVEC_constructor(&S.toUnblock_vec, 100000);
@@ -335,12 +335,12 @@ main(int argc, char **argv)
    { /******* Now get a map of LOGENTRY objects that have combined counts ****/
 
       /* List by address. Make a addr_map of LOGENTRY objects with composite counts */
-      MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_map_addr, &S.addr_map);
-      unsigned nItems= MAP_numItems(&S.addr_map);
+      MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_map_addr, &S.addr2logEntry_map);
+      unsigned nItems= MAP_numItems(&S.addr2logEntry_map);
 
       {
          LOGENTRY *leArr[nItems];
-         MAP_fetchAllItems(&S.addr_map, (void**)leArr);
+         MAP_fetchAllItems(&S.addr2logEntry_map, (void**)leArr);
          qsort(leArr, nItems, sizeof(LOGENTRY*), logentry_count_qsort);
 
          /* Process each LOGENTRY item */
@@ -429,7 +429,7 @@ main(int argc, char **argv)
             MAP_sinit(&byCntry_map, 100, 100);
 
             /* Build index by trawling existing by-address map */
-            MAP_visitAllEntries(&S.addr_map, (int(*)(void*,void*))map_byCountries, &byCntry_map);
+            MAP_visitAllEntries(&S.addr2logEntry_map, (int(*)(void*,void*))map_byCountries, &byCntry_map);
 
             /* Now get all cntStat handles in a vector */
             unsigned vec_sz= MAP_numItems(&byCntry_map);
@@ -444,9 +444,9 @@ main(int argc, char **argv)
             for(unsigned i= 0; i < vec_sz; ++i) {
 
                struct cntryStat *cs= rtn_vec[i];
-               ez_fprintf(stdout, "%2s  %5u offenses\n"
+               ez_fprintf(stdout, "%2s  %5u blocked addresses\n"
                      , cs->cntry[0] ? cs->cntry : "--"
-                     , cs->count
+                     , cs->nAddr
                      );
             }
          }
@@ -493,8 +493,8 @@ cntryStat_count_qsort(const void *p1, const void *p2)
       *cs1= *(const struct cntryStat *const*)p1,
       *cs2= *(const struct cntryStat *const*)p2;
 
-   if(cs1->count > cs2->count) return -1;
-   if(cs1->count < cs2->count) return 1;
+   if(cs1->nAddr > cs2->nAddr) return -1;
+   if(cs1->nAddr < cs2->nAddr) return 1;
    return 0;
 }
 
@@ -561,7 +561,7 @@ map_byCountries(LOGENTRY *e, MAP *h_map)
       MAP_addStrKey(h_map, cs->cntry, cs);
    }
 
-   cs->count += e->count;
+   ++cs->nAddr;
 
    return 0;
 }
