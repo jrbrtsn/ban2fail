@@ -79,6 +79,14 @@ static int whitelist_init(CFGMAP *h_cfgmap, char *symStr);
 /*==================================================================*/
 /*========================= static data ============================*/
 /*==================================================================*/
+static const struct bitTuple GlobalFlagBitTuples[]= {
+   {.name= "GLB_VERBOSE_FLG", .bit= GLB_VERBOSE_FLG},
+   {.name= "GLB_LIST_ADDR_FLG", .bit= GLB_LIST_ADDR_FLG},
+   {.name= "GLB_LIST_CNTRY_FLG", .bit= GLB_LIST_CNTRY_FLG},
+   {.name= "GLB_DONT_IPTABLE_FLG", .bit= GLB_DONT_IPTABLE_FLG},
+   {/* Terminating member */}
+};
+
 struct Global G= {
    .cacheDir= CACHEDIR,
    .lockPath= LOCKPATH,
@@ -86,8 +94,10 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 10,
-      .patch= 3
-   }
+      .patch= 4
+   },
+
+   .bitTuples.flags= GlobalFlagBitTuples
 };
 
 const static struct initInfo S_initInfo_arr[] = {
@@ -96,7 +106,6 @@ const static struct initInfo S_initInfo_arr[] = {
    {/* Terminating member */}
 };
 
-
 static const struct bitTuple BlockBitTuples[]= {
    {.name= "BLOCKED", .bit= BLOCKED_FLG},
    {.name= "+WouldBLOCK+", .bit= WOULD_BLOCK_FLG},
@@ -104,6 +113,7 @@ static const struct bitTuple BlockBitTuples[]= {
    {.name= "Whitelisted",   .bit= WHITELIST_FLG},
    {/* Terminating member */}
 };
+
 
 /*================ Local only static struct  ======================*/
 static struct {
@@ -338,7 +348,7 @@ main(int argc, char **argv)
       MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_map_addr, &S.addr2logEntry_map);
       unsigned nItems= MAP_numItems(&S.addr2logEntry_map);
 
-      {
+      { /*--- extra scope for dynamic leArr ---*/
          LOGENTRY *leArr[nItems];
          MAP_fetchAllItems(&S.addr2logEntry_map, (void**)leArr);
          qsort(leArr, nItems, sizeof(LOGENTRY*), logentry_count_qsort);
@@ -388,39 +398,7 @@ main(int argc, char **argv)
 
          } /*--- End of LOGENTRY processing ---*/
 
-         /* Take care of summary blocking and reporting */
-         unsigned n2Block= PTRVEC_numItems(&S.toBlock_vec);
-         unsigned n2Unblock= PTRVEC_numItems(&S.toUnblock_vec);
-
-         if(!(G.flags & GLB_DONT_IPTABLE_FLG)) {
-
-            if(n2Block) {
-
-               if(IPTABLES_block_addresses(&S.toBlock_vec, 10)) {
-                  eprintf("ERROR: cannot block addresses!");
-                  goto abort;
-               }
-               printf("Blocked %u new hosts\n", n2Block);
-            }
-
-            if(n2Unblock) {
-
-               if(IPTABLES_unblock_addresses(&S.toUnblock_vec, 10)) {
-                  eprintf("ERROR: cannot unblock addresses!");
-                  goto abort;
-               }
-               printf("Unblocked %u hosts\n", n2Unblock);
-            }
-
-         } else {
-
-            if(n2Block) 
-               printf("Would block %u new hosts\n", n2Block);
-
-            if(n2Unblock)
-               printf("Would unblock %u new hosts\n", n2Unblock);
-         }
-
+         unsigned currBlocked= MAP_numItems(&S.addr2logEntry_map);
 
          /* List offenses by country if directed to do so */
          if(G.flags & GLB_LIST_CNTRY_FLG) {
@@ -450,9 +428,62 @@ main(int argc, char **argv)
                      , cs->nAddr
                      );
             }
+
+            if(G.flags & GLB_PRINT_MASK) {
+               ez_fprintf(stdout,
+"===============================================\n"
+"%6u addresses currently blocked.\n"
+                          , currBlocked
+                         );
+            }
+
+         } else {
+
+            /* Take care of summary blocking and reporting */
+            unsigned n2Block= PTRVEC_numItems(&S.toBlock_vec);
+            unsigned n2Unblock= PTRVEC_numItems(&S.toUnblock_vec);
+         
+            if(G.flags & GLB_PRINT_MASK)
+               ez_fprintf(stdout, "===============================================\n");
+
+            if(!(G.flags & GLB_DONT_IPTABLE_FLG)) {
+
+               if(n2Block) {
+
+                  if(IPTABLES_block_addresses(&S.toBlock_vec, 10)) {
+                     eprintf("ERROR: cannot block addresses!");
+                     goto abort;
+                  }
+                  ez_fprintf(stdout, "Blocked %u new hosts\n", n2Block);
+               }
+
+               if(n2Unblock) {
+
+                  if(IPTABLES_unblock_addresses(&S.toUnblock_vec, 10)) {
+                     eprintf("ERROR: cannot unblock addresses!");
+                     goto abort;
+                  }
+                  ez_fprintf(stdout, "Unblocked %u hosts\n", n2Unblock);
+               }
+
+
+            } else {
+
+               if(n2Block) 
+                  ez_fprintf(stdout, "Would block %u new hosts\n", n2Block);
+
+               if(n2Unblock)
+                  ez_fprintf(stdout, "Would unblock %u new hosts\n", n2Unblock);
+            }
+
+            if(G.flags & GLB_PRINT_MASK)
+                  ez_fprintf(stdout, "%6u addresses currently blocked.\n" , currBlocked + n2Block - n2Unblock);
+
          }
+
       }
    }
+
 
    rtn= EXIT_SUCCESS;
 abort:

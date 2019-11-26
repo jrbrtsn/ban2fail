@@ -65,6 +65,10 @@ extern struct Global {
           minor,
           patch;
    } version;
+   
+   struct {
+      const struct bitTuple *flags;
+   } bitTuples;
 
 } G;
 
