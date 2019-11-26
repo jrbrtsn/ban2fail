@@ -86,7 +86,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 10,
-      .patch= 1
+      .patch= 2
    }
 };
 
@@ -336,6 +336,11 @@ main(int argc, char **argv)
 
       /* List by address. Make a addr_map of LOGENTRY objects with composite counts */
       MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_map_addr, &S.addr_map);
+
+      /* Augment list of all blocked IP's by those which currently have not match in the log files */
+      IPTABLES_fill_in_missing(&S.addr_map);
+
+      /* Count up total */
       unsigned nItems= MAP_numItems(&S.addr_map);
 
       {
@@ -357,15 +362,16 @@ main(int argc, char **argv)
              if(-1 == nAllowed)
                 flags |= WHITELIST_FLG;
 
-             if((-1 == nAllowed || e->count <= nAllowed) &&
-                (flags & BLOCKED_FLG)) {
+             if((flags & WHITELIST_FLG || e->count <= nAllowed) &&
+                (flags & BLOCKED_FLG))
+             {
 
                   flags |= UNJUST_BLOCK_FLG;
                   PTRVEC_addTail(&S.toUnblock_vec, e->addr);
              }
 
              if(!(flags & BLOCKED_FLG) &&
-                -1 != nAllowed &&
+                !(flags & WHITELIST_FLG) &&
                 e->count > nAllowed)
              {
 

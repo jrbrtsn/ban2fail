@@ -48,6 +48,11 @@ IPTABLES_unblock_addresses(PTRVEC *h_vec, unsigned batch_sz);
  * Unblock addresses in batches of batch_sz.
  */
 
+int
+IPTABLES_fill_in_missing(MAP *h_rtn_map);
+/**************************************************************
+ * Fill in all blocked IP's which are not already in *h_map.
+ */
 
 #ifdef __cplusplus
 }

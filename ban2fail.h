@@ -33,7 +33,7 @@
  * work with a much larger number.  The command line maximum
  * is something like 200K characters.
  */
-#define IPTABLES_BATCH_SZ 10
+#define IPTABLES_BATCH_SZ 100
 
 /* Where to find stuff */
 #define CONFIGFILE "/etc/ban2fail/ban2fail.cfg"

@@ -17,6 +17,7 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -24,6 +25,7 @@
 #include "ban2fail.h"
 #include "ez_stdio.h"
 #include "iptables.h"
+#include "logEntry.h"
 #include "map.h"
 #include "util.h"
 
@@ -47,18 +49,20 @@ initialize (void)
    static char lbuf[1024];
    static char addr[64];
    FILE *fh= ez_popen(IPTABLES " -nL INPUT 2>/dev/null", "r");
-   for(unsigned i= 0; ez_fgets(lbuf, sizeof(lbuf)-1, fh); ++i) {
+
+   unsigned i;
+   for(i= 0; ez_fgets(lbuf, sizeof(lbuf)-1, fh); ++i) {
       if(0 == i || 1 == i) continue;
       if(1 != sscanf(lbuf, "DROP all -- %63s 0.0.0.0/0", addr)) {
          eprintf("ERROR: scanning pattern");
          continue;
       }
-      MAP_addStrKey(&S.addr_map, addr, (void*)-1);
+      MAP_addStrKey(&S.addr_map, addr, strdup(addr));
    }
    ez_pclose(fh);
 
    fh= ez_popen(IP6TABLES " -nL INPUT 2>/dev/null", "r");
-   for(unsigned i= 0; ez_fgets(lbuf, sizeof(lbuf)-1, fh); ++i) {
+   for(i= 0; ez_fgets(lbuf, sizeof(lbuf)-1, fh); ++i) {
       if(0 == i || 1 == i) continue;
 
 // DROP       all      2607:5300:60:653b::  ::/0
@@ -66,7 +70,7 @@ initialize (void)
          eprintf("ERROR: scanning pattern");
          continue;
       }
-      MAP_addStrKey(&S.addr_map, addr, (void*)-1);
+      MAP_addStrKey(&S.addr_map, addr, strdup(addr));
    }
    ez_pclose(fh);
 
@@ -232,4 +236,44 @@ IPTABLES_unblock_addresses(PTRVEC *h_vec, unsigned batch_sz)
 
    return _control_addresses('D', h_vec, batch_sz);
 
+}
+
+static int
+fill_in_missing(char *blocked_addr, MAP *h_rtn_map)
+/**************************************************************
+ * If blocked_addr is not in h_rtn_map, create an object and
+ * place it their.
+ */
+{
+   if( MAP_findStrItem(h_rtn_map, blocked_addr)) return 0;
+
+   /* Create a new faux logentry object */
+   LOGENTRY *e;
+   LOGENTRY_addr_create(e, blocked_addr);
+   assert(e);
+
+   /* Place in the return map */
+   MAP_addStrKey(h_rtn_map, blocked_addr, e);
+
+   return 0;
+}
+
+int
+IPTABLES_fill_in_missing(MAP *h_rtn_map)
+/**************************************************************
+ * Fill in all blocked IP's which are not already in *h_map.
+ */
+{
+   if(!S.is_init)
+      initialize();
+
+   int rtn= -1;
+
+   MAP_visitAllEntries(&S.addr_map, (int(*)(void*,void*))fill_in_missing, h_rtn_map);
+
+
+
+   rtn= 0;
+abort:
+   return rtn;
 }
