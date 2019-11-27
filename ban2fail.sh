@@ -7,9 +7,6 @@
 
 BAN2FAIL=/usr/local/bin/ban2fail
 BAN2FAIL_CFG=/etc/ban2fail/ban2fail.cfg
-LOGFILE=/var/log/ban2fail.log
-
-#LOGFILE=/dev/pts/2
 
 # Uncomment this if you wish to see output from the time command
 #TIME=time
