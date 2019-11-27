@@ -95,7 +95,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 11,
-      .patch= 0
+      .patch= 2
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -144,7 +144,8 @@ static struct {
 /* Enums for long options */
 enum {
    VERSION_OPT_ENUM=128, /* Larger than any printable character */
-   HELP_OPT_ENUM
+   HELP_OPT_ENUM,
+   PRINT_LOGFILE_NAMES_ENUM
 };
 
 int
@@ -177,6 +178,7 @@ main(int argc, char **argv)
 
          static const struct option long_options[]= {
             {"help", no_argument, 0, HELP_OPT_ENUM},
+            {"print-lfn", no_argument, 0, PRINT_LOGFILE_NAMES_ENUM},
             {"version", no_argument, 0, VERSION_OPT_ENUM},
             {}
          };
@@ -217,6 +219,10 @@ main(int argc, char **argv)
                G.flags |= GLB_VERBOSE_FLG;
                break;
 
+            case PRINT_LOGFILE_NAMES_ENUM:
+               G.flags |= GLB_PRINT_LOGFILE_NAMES_FLG;
+               break;
+
             case VERSION_OPT_ENUM:
                ez_fprintf(stdout, "ban2fail v%d.%d.%d\n", G.version.major, G.version.minor, G.version.patch);
                return 0;
@@ -230,8 +236,7 @@ main(int argc, char **argv)
 
       if(errflg) {
          ez_fprintf(stderr, 
-"ban2fail v%d.%d.%d\n"
-"Usage:\n"
+"ban2fail v%d.%d.%d Usage:\n"
 "%s [options] [-t confFile]\n"
 "  --help\tprint this usage message.\n"
 "  -a\t\tList results by Address\n"
@@ -239,6 +244,7 @@ main(int argc, char **argv)
 "  -s\t\tlist Summary results only\n"
 "  -t confFile\tTest confFile, do not apply iptables rules\n"
 "  -v\t\tVerbose information about unrecognized configuration info\n"
+"  --print-lfn\tprint the names of primary logfiles to scan\n"
 "  --version\tprint the version number and exit.\n"
          , G.version.major, G.version.minor, G.version.patch
          , argv[0]
@@ -333,6 +339,12 @@ main(int argc, char **argv)
 
       }
 
+      if(G.flags & GLB_PRINT_LOGFILE_NAMES_FLG) {
+         /* Shortcut any further processing or reporting */
+         rtn= 0;
+         goto abort;
+      }
+
       { /* Check cache for logType directories not in our current map */
          DIR *dir= ez_opendir(G.cacheDir);
          struct dirent *entry;
@@ -363,12 +375,29 @@ main(int argc, char **argv)
       ez_close(lock_fd);
       lock_fd= -1;
 
-      unsigned nFound= 0;
-      MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_offenseCount, &nFound);
-
       if(G.flags & GLB_LONG_LISTING_FLG) {
-         ez_fprintf(G.listing_fh, "===== Found %u total offenses =====\n", nFound);
+         MAP map;
+         MAP_constructor(&map, 1000, 100);
+
+         unsigned nOffFound= 0,
+                  nAddrFound;
+         MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_offenseCount, &nOffFound);
+         /* Collect unique addresses into a map */
+         MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_map_addr, &map);
+
+         /* Number of items in map is number of unique addresses */
+         nAddrFound= MAP_numItems(&map);
+
+         ez_fprintf(G.listing_fh,
+"===== Found %u total offenses (%u addresses) =====\n"
+            , nOffFound
+            , nAddrFound
+            );
          fflush(G.listing_fh);
+
+         /* Clean up map used for counting */
+         MAP_clearAndDestroy(&map, (void*(*)(void*))LOGENTRY_destructor);
+         MAP_destructor(&map);
       }
    }
 

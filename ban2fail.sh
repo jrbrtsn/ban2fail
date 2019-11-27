@@ -1,44 +1,52 @@
-#!/bin/bash
+#!/bin/bash -e
 #
-# JDR Wed 20 Nov 2019 10:48:14 PM EST
-# The purpose of this script is to be run from a minutely cron job,
-# running the job several times a minute,
-# making reasonably sure there is no overlap.
+# JDR Wed 27 Nov 2019 01:30:29 PM EST
+# The purpose of this script is to be run from a systemd service
+# file, or sysvinit script.
 #
 
 BAN2FAIL=/usr/local/bin/ban2fail
+BAN2FAIL_CFG=/etc/ban2fail/ban2fail.cfg
 LOGFILE=/var/log/ban2fail.log
+
 #LOGFILE=/dev/pts/2
-PERIOD_SEC=5
 
-WHEN=$(date)
+# Uncomment this if you wish to see output from the time command
+#TIME=time
 
-echo -n "$WHEN" >>$LOGFILE
+# Always do initial check
+echo "Initial run for $BAN2FAIL"
+$TIME $BAN2FAIL
 
-BEGIN_SEC=$(date +%s)
-
-count=0
 while true; do
+   echo "Starting main loop"
+   LOG_NAMES=$($BAN2FAIL --print-lfn | tr $'\n' ' ')
+   LOG_NAMES="$LOG_NAMES $BAN2FAIL_CFG"
 
-  (( ++count ))
+   echo "Monitoring: $LOG_NAMES"
 
-  NOW_SEC=$(date +%s)
+   while read; do
+      # if a file gets renamed, logrotate is doing it's thing.
+      [[ "$REPLY" =~ MOVE_SELF ]] && break
+      [[ "$REPLY" == $BAN2FAIL_CFG\ MODIFY ]] && break
 
-  (( MAX_SEC= 60 - PERIOD_SEC - 1 ))
+      [[ "$REPLY" =~ MODIFY ]] || continue
 
-  (( NOW_SEC - BEGIN_SEC > MAX_SEC )) && break
+# Uncomment this to see the inotifywait output which triggered this cycle
+#echo "REPLY= '$REPLY'"
 
-  $BAN2FAIL
+      echo "Running $BAN2FAIL"
+      # Check for offenses
+      # If ban2fail failed, then pause to avoid DOS on CPU
+      $TIME $BAN2FAIL || sleep 1
 
-  echo -n " $count" >>$LOGFILE
-  FINISHED_SEC=$(date +%s)
-  (( SLEEP = 5 - FINISHED_SEC + NOW_SEC ))
+   done < <(/usr/bin/inotifywait -m $LOG_NAMES)
 
-  (( SLEEP < 1 )) && continue
-  sleep $SLEEP
+   date  | tr -d $'\n'
+   echo ' Exiting main loop'
 
+   sleep 1
 done
 
-echo  >>$LOGFILE
 
 exit 0

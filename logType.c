@@ -27,6 +27,7 @@
 #include <unistd.h>
 
 #include "ban2fail.h"
+#include "logEntry.h"
 #include "logFile.h"
 #include "logType.h"
 #include "ez_dirent.h"
@@ -35,7 +36,6 @@
 #include "str.h"
 #include "util.h"
 
-#define NOFFENSES_CACHED_FLG (1<<0)
 
 static int
 cmp_pvsort(const void *const* pp1, const void *const* pp2)
@@ -103,6 +103,9 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
    MAP_constructor(&self->file_map, 10, 10);
    self->dir= strdup(proto->dir);
    self->pfix= strdup(proto->pfix);
+
+   if(G.flags & GLB_PRINT_LOGFILE_NAMES_FLG)
+      ez_fprintf(G.listing_fh, "%s/%s\n", proto->dir, proto->pfix);
 
    size_t pfix_len= strlen(self->pfix);
 
@@ -212,11 +215,14 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          }
          assert(f);
 
-         unsigned nFound= 0;
-         LOGFILE_offenseCount(f, &nFound);
+         unsigned nOffFound= 0,
+                  nAddrFound= 0;
+
+         LOGFILE_offenseCount(f, &nOffFound);
+         LOGFILE_addressCount(f, &nAddrFound);
 
          if(G.flags & GLB_LONG_LISTING_FLG) {
-            ez_fprintf(G.listing_fh, " found %u offenses\n", nFound);
+            ez_fprintf(G.listing_fh, " found %u offenses (%u addresses)\n", nOffFound, nAddrFound);
             fflush(G.listing_fh);
          }
 
@@ -248,12 +254,15 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
       ez_closedir(dir);
    }
 
-   unsigned nFound= 0;
-   LOGTYPE_offenseCount(self, &nFound);
+   unsigned nOffFound= 0,
+            nAddrFound;
+   LOGTYPE_offenseCount(self, &nOffFound);
+   nAddrFound= LOGTYPE_addressCount(self);
 
    if(G.flags & GLB_LONG_LISTING_FLG) {
-      ez_fprintf(G.listing_fh, ">>>> Found %u offenses for %s/%s*\n"
-            , nFound
+      ez_fprintf(G.listing_fh, ">>>> Found %u offenses (%u addresses) for %s/%s*\n"
+            , nOffFound
+            , nAddrFound
             , self->dir
             , self->pfix
             );
@@ -433,10 +442,29 @@ LOGTYPE_offenseCount(LOGTYPE *self, unsigned *h_sum)
  * Get a count of all offenses for this log type.
  */
 {
-   if(!(self->flags & NOFFENSES_CACHED_FLG)) {
-      MAP_visitAllEntries(&self->file_map, (int(*)(void*,void*))LOGFILE_offenseCount, &self->nOffenses);
-      self->flags |= NOFFENSES_CACHED_FLG;
-   }
-   *h_sum += self->nOffenses;
+   unsigned nFound= 0;
+   MAP_visitAllEntries(&self->file_map, (int(*)(void*,void*))LOGFILE_offenseCount, &nFound);
+   *h_sum += nFound;
    return 0;
+}
+
+int
+LOGTYPE_addressCount(LOGTYPE *self)
+/********************************************************
+ * Get a count of all addresses for this log type.
+ * NOT REENTRANT!
+ */
+{
+   /* We'll need a map in which to collect unique addresses */
+   static MAP smap;
+   MAP_sinit(&smap, 1000, 100);
+
+   /* Collect results for all LOGILE objects we own */
+   MAP_visitAllEntries(&self->file_map, (int(*)(void*,void*))LOGFILE_map_addr, &smap);
+   /* For clarity */
+   unsigned nFound= MAP_numItems(&smap);
+   
+   /* Cleanup for next time */
+   MAP_clearAndDestroy(&smap, (void*(*)(void*))LOGENTRY_destructor);
+   return nFound;
 }

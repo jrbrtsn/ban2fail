@@ -28,7 +28,7 @@
 typedef struct _LOGFILE {
    int flags;
    char *logFilePath;
-   MAP addr_map;
+   MAP addr2logEntry_map;
    unsigned nOffenses;
 } LOGFILE;
 
@@ -91,6 +91,12 @@ int
 LOGFILE_offenseCount(LOGFILE *self, unsigned *h_sum);
 /********************************************************
  * Get a count of all offenses for this file.
+ */
+
+int
+LOGFILE_addressCount(LOGFILE *self, unsigned *h_sum);
+/********************************************************
+ * Get a count of all unique addresses for this file.
  */
 
 #ifdef __cplusplus

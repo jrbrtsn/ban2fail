@@ -48,12 +48,10 @@ struct logProtoType {
 /* One of these for each log file type to be scanned */
 
 typedef struct _LOGTYPE {
-   int flags;
    char *dir,
         *pfix,
         patterns_md5sum[33];
    MAP file_map;
-   unsigned nOffenses;
 } LOGTYPE;
 
 #ifdef __cplusplus
@@ -105,6 +103,12 @@ int
 LOGTYPE_offenseCount(LOGTYPE *self, unsigned *h_sum);
 /********************************************************
  * Get a count of all offenses for this log type.
+ */
+
+int
+LOGTYPE_addressCount(LOGTYPE *self);
+/********************************************************
+ * Get a count of all addresses for this log type.
  */
 
 #ifdef __cplusplus

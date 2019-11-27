@@ -1,0 +1,12 @@
+[Unit]
+Description=Log file scanning and iptables filtering
+ConditionPathExists=/usr/local/bin/ban2fail.sh
+
+[Service]
+WorkingDirectory=/tmp
+Type=simple
+ExecStart=/usr/local/bin/ban2fail.sh
+TimeoutSec=0
+
+[Install]
+WantedBy=multi-user.target
