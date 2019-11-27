@@ -35,12 +35,17 @@ while true; do
 # Uncomment this to see the inotifywait output which triggered this cycle
 #echo "REPLY= '$REPLY'"
 
+      # Avoid running ban2fail multiple times if possible
+      while read -t 0; do
+         read
+      done
+
       echo "Running $BAN2FAIL"
       # Check for offenses
       # If ban2fail failed, then pause to avoid DOS on CPU
       $TIME $BAN2FAIL || sleep 1
 
-   done < <(/usr/bin/inotifywait -m $LOG_NAMES)
+   done < <(exec /usr/bin/inotifywait -m $LOG_NAMES)
 
    date  | tr -d $'\n'
    echo ' Exiting main loop'
