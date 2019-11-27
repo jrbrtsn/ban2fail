@@ -94,7 +94,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 10,
-      .patch= 4
+      .patch= 5
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -432,8 +432,10 @@ main(int argc, char **argv)
             if(G.flags & GLB_PRINT_MASK) {
                ez_fprintf(stdout,
 "===============================================\n"
-"%6u addresses currently blocked.\n"
+"%6u addresses currently blocked\n"
+"%6u countries affected\n"
                           , currBlocked
+                          , vec_sz
                          );
             }
 
@@ -477,7 +479,7 @@ main(int argc, char **argv)
             }
 
             if(G.flags & GLB_PRINT_MASK)
-                  ez_fprintf(stdout, "%6u addresses currently blocked.\n" , currBlocked + n2Block - n2Unblock);
+                  ez_fprintf(stdout, "%6u addresses currently blocked\n" , currBlocked + n2Block - n2Unblock);
 
          }
 
