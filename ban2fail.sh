@@ -7,6 +7,7 @@
 
 BAN2FAIL=/usr/local/bin/ban2fail
 BAN2FAIL_CFG=/etc/ban2fail/ban2fail.cfg
+INOTIFYWAIT=/usr/bin/inotifywait
 
 # Uncomment this if you wish to see output from the time command
 #TIME=time
@@ -42,9 +43,8 @@ while true; do
       # If ban2fail failed, then pause to avoid DOS on CPU
       $TIME $BAN2FAIL || sleep 1
 
-   done < <(exec /usr/bin/inotifywait -m $LOG_NAMES)
+   done < <(exec $INOTIFYWAIT -m $LOG_NAMES)
 
-   date  | tr -d $'\n'
    echo ' Exiting main loop'
 
    sleep 1

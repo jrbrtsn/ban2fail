@@ -95,7 +95,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 11,
-      .patch= 2
+      .patch= 3
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -405,6 +405,10 @@ main(int argc, char **argv)
 
       /* List by address. Make a addr_map of LOGENTRY objects with composite counts */
       MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_map_addr, &S.addr2logEntry_map);
+
+      /* Pick up remaining blocked addresses */
+      IPTABLES_fill_in_missing(&S.addr2logEntry_map);
+
       unsigned nItems= MAP_numItems(&S.addr2logEntry_map);
 
       LOGENTRY *leArr[nItems];
