@@ -603,6 +603,19 @@ abort:
    return rtn;
 }
 
+FILE*
+pager_open(void)
+/***************************************************
+ * popen() the caller's pager.
+ */
+{
+   char *cmd= getenv("PAGER");
+   if(!cmd)
+      cmd= "/bin/more";
+
+   return ez_popen(cmd, "w");
+}
+
 const char*
 prefix_home(const char *fname)
 /***************************************************

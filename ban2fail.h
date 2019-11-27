@@ -52,13 +52,16 @@ extern struct Global {
       GLB_LIST_ADDR_FLG     =1<<1,
       GLB_LIST_CNTRY_FLG    =1<<2,
       GLB_DONT_IPTABLE_FLG  =1<<3,
-      GLB_PRINT_MASK = GLB_LIST_CNTRY_FLG|GLB_LIST_ADDR_FLG
+      GLB_LIST_SUMMARY_FLG  =1<<4,
+      GLB_LONG_LISTING_FLG = GLB_LIST_CNTRY_FLG|GLB_LIST_ADDR_FLG
    } flags;
 
    MAP logType_map;
 
    char *cacheDir,
         *lockPath;
+
+   FILE *listing_fh;
 
    struct {
       int major,

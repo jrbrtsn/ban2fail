@@ -181,9 +181,9 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
             ez_fclose(fh);
          }
 
-         if(G.flags & GLB_PRINT_MASK) {
-            ez_fprintf(stdout, "Scanning \"%s\" ...", log_fname);
-            fflush(stdout);
+         if(G.flags & GLB_LONG_LISTING_FLG) {
+            ez_fprintf(G.listing_fh, "Scanning \"%s\" ...", log_fname);
+            fflush(G.listing_fh);
          }
 
          /* Now we have the checksum of the log file */
@@ -215,9 +215,9 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          unsigned nFound= 0;
          LOGFILE_offenseCount(f, &nFound);
 
-         if(G.flags & GLB_PRINT_MASK) {
-            ez_fprintf(stdout, " found %u offenses\n", nFound);
-            fflush(stdout);
+         if(G.flags & GLB_LONG_LISTING_FLG) {
+            ez_fprintf(G.listing_fh, " found %u offenses\n", nFound);
+            fflush(G.listing_fh);
          }
 
          MAP_addStrKey(&self->file_map, sumStr, f);
@@ -251,13 +251,13 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
    unsigned nFound= 0;
    LOGTYPE_offenseCount(self, &nFound);
 
-   if(G.flags & GLB_PRINT_MASK) {
-      ez_fprintf(stdout, ">>>> Found %u offenses for %s/%s*\n"
+   if(G.flags & GLB_LONG_LISTING_FLG) {
+      ez_fprintf(G.listing_fh, ">>>> Found %u offenses for %s/%s*\n"
             , nFound
             , self->dir
             , self->pfix
             );
-      fflush(stdout);
+      fflush(G.listing_fh);
    }
 
    rtn= self;

@@ -268,9 +268,9 @@ regex_compile(regex_t *preg, const char *pattern, int cflags);
  */
 
 FILE*
-pager_open();
+pager_open(void);
 /***************************************************
- * popen() the caller's pager.
+ * open() the caller's $PAGER on tmpfile.
  */
 
 const char*

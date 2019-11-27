@@ -27,6 +27,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include "ban2fail.h"
 #include "cntry.h"
@@ -93,8 +94,8 @@ struct Global G= {
 
    .version= {
       .major= 0,
-      .minor= 10,
-      .patch= 5
+      .minor= 11,
+      .patch= 0
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -118,10 +119,19 @@ static const struct bitTuple BlockBitTuples[]= {
 /*================ Local only static struct  ======================*/
 static struct {
 
+   enum {
+      PAGER_RUNNING_FLG= 1<<31
+   } flags;
+
+   /* LOGENTRY object indexed by ip address */
    MAP addr2logEntry_map;
 
+   /* CFGMAP containing our configuration information */
    CFGMAP cfgmap;
 
+   /* Vectors for storing ip address which are to be blocked and
+    * Unblocked.
+    */
    PTRVEC toBlock_vec,
           toUnblock_vec;
 
@@ -173,7 +183,7 @@ main(int argc, char **argv)
 
          int c, option_ndx= 0;
 
-         c= getopt_long(argc, argv, ":act:v", long_options, &option_ndx);
+         c= getopt_long(argc, argv, ":acst:v", long_options, &option_ndx);
 
          if(-1 == c) break;
 
@@ -192,6 +202,10 @@ main(int argc, char **argv)
                G.flags |= GLB_LIST_ADDR_FLG;
                break;
 
+            case 's':
+               G.flags |= GLB_LIST_SUMMARY_FLG;
+               break;
+
             case 't':
                G.flags |= GLB_DONT_IPTABLE_FLG;
                G.cacheDir= CACHEDIR "-test";
@@ -204,7 +218,7 @@ main(int argc, char **argv)
                break;
 
             case VERSION_OPT_ENUM:
-               ez_fprintf(stderr, "ban2fail v%d.%d.%d\n", G.version.major, G.version.minor, G.version.patch);
+               ez_fprintf(stdout, "ban2fail v%d.%d.%d\n", G.version.major, G.version.minor, G.version.patch);
                return 0;
 
             case '?':
@@ -221,6 +235,7 @@ main(int argc, char **argv)
 "  --help\tprint this usage message.\n"
 "  -a\t\tList results by Address\n"
 "  -c\t\tlist results by Country\n"
+"  -s\t\tlist summary address result only\n"
 "  -t confFile\tTest confFile, do not apply iptables rules\n"
 "  -v\t\tVerbose information about unrecognized configuration info\n"
 "  --version\tprint the version number and exit.\n"
@@ -265,6 +280,19 @@ main(int argc, char **argv)
       }
    }
 
+   /* Default sending listing to stdout */
+   G.listing_fh= stdout;
+
+   /* if stdout is a tty, and listing is likely
+    * to be long, then use $PAGER.
+    */
+   if(G.flags & GLB_LONG_LISTING_FLG && isatty(fileno(G.listing_fh))) {
+      S.flags |= PAGER_RUNNING_FLG;
+      G.listing_fh= pager_open();
+   }
+
+   assert(G.listing_fh);
+
 
    { /*============== Open our cache, instantiate LOGTYPE objects ==============*/
 
@@ -276,13 +304,13 @@ main(int argc, char **argv)
          ez_mkdir(G.cacheDir, 0700);
       }
 
-      if(G.flags & GLB_PRINT_MASK) {
-         ez_fprintf(stdout, "=============== ban2fail v%d.%d.%d =============\n"
+      if(G.flags & GLB_LONG_LISTING_FLG) {
+         ez_fprintf(G.listing_fh, "=============== ban2fail v%d.%d.%d =============\n"
                , G.version.major
                , G.version.minor
                , G.version.patch
                );
-         fflush(stdout);
+         fflush(G.listing_fh);
       }
 
       { /*============== Implement configuration ==============*/
@@ -293,8 +321,8 @@ main(int argc, char **argv)
          }
 
          if(G.flags & GLB_VERBOSE_FLG) { /* Warn about unused symbols */
-            CFGMAP_print_unused_symbols(&S.cfgmap, stdout);
-            fflush(stdout);
+            CFGMAP_print_unused_symbols(&S.cfgmap, G.listing_fh);
+            fflush(G.listing_fh);
          }
 
          /* Just leave the S.cfgmap in place, so all the value strings
@@ -336,9 +364,9 @@ main(int argc, char **argv)
       unsigned nFound= 0;
       MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_offenseCount, &nFound);
 
-      if(G.flags & GLB_PRINT_MASK) {
-         ez_fprintf(stdout, "===== Found %u total offenses =====\n", nFound);
-         fflush(stdout);
+      if(G.flags & GLB_LONG_LISTING_FLG) {
+         ez_fprintf(G.listing_fh, "===== Found %u total offenses =====\n", nFound);
+         fflush(G.listing_fh);
       }
    }
 
@@ -348,144 +376,140 @@ main(int argc, char **argv)
       MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_map_addr, &S.addr2logEntry_map);
       unsigned nItems= MAP_numItems(&S.addr2logEntry_map);
 
-      { /*--- extra scope for dynamic leArr ---*/
-         LOGENTRY *leArr[nItems];
-         MAP_fetchAllItems(&S.addr2logEntry_map, (void**)leArr);
-         qsort(leArr, nItems, sizeof(LOGENTRY*), logentry_count_qsort);
+      LOGENTRY *leArr[nItems];
+      MAP_fetchAllItems(&S.addr2logEntry_map, (void**)leArr);
+      qsort(leArr, nItems, sizeof(LOGENTRY*), logentry_count_qsort);
 
-         /* Process each LOGENTRY item */
-         for(unsigned i= 0; i < nItems; ++i) {
-            int flags=0;
+      /* Process each LOGENTRY item */
+      for(unsigned i= 0; i < nItems; ++i) {
+         int flags=0;
 
-            LOGENTRY *e= leArr[i];
+         LOGENTRY *e= leArr[i];
 
-            if(IPTABLES_is_currently_blocked(e->addr))
-               flags |= BLOCKED_FLG;
+         if(IPTABLES_is_currently_blocked(e->addr))
+            flags |= BLOCKED_FLG;
 
-            int nAllowed= MAXOFF_allowed(e->addr);
+         int nAllowed= MAXOFF_allowed(e->addr);
 
-            if(-1 == nAllowed)
-                flags |= WHITELIST_FLG;
+         if(-1 == nAllowed)
+             flags |= WHITELIST_FLG;
 
-            if((flags & WHITELIST_FLG || e->count <= nAllowed) &&
-               (flags & BLOCKED_FLG))
-            {
+         if((flags & WHITELIST_FLG || e->count <= nAllowed) &&
+            (flags & BLOCKED_FLG))
+         {
 
-                flags |= UNJUST_BLOCK_FLG;
-                PTRVEC_addTail(&S.toUnblock_vec, e->addr);
-            }
+             flags |= UNJUST_BLOCK_FLG;
+             PTRVEC_addTail(&S.toUnblock_vec, e->addr);
+         }
 
-            if(!(flags & BLOCKED_FLG) &&
-               !(flags & WHITELIST_FLG) &&
-               e->count > nAllowed)
-            {
+         if(!(flags & BLOCKED_FLG) &&
+            !(flags & WHITELIST_FLG) &&
+            e->count > nAllowed)
+         {
 
-                flags |= WOULD_BLOCK_FLG;
-                PTRVEC_addTail(&S.toBlock_vec, e->addr);
-            }
+             flags |= WOULD_BLOCK_FLG;
+             PTRVEC_addTail(&S.toBlock_vec, e->addr);
+         }
 
-            /* Print out only for list option */
-            if(G.flags & GLB_LIST_ADDR_FLG) {
+         /* Print out only for list option */
+         if(G.flags & GLB_LIST_ADDR_FLG) {
 
-               ez_fprintf(stdout, "%-15s\t%5u/%-4u offenses %s (%s)\n"
-                     , e->addr
-                     , e->count
-                     , nAllowed
-                     , e->cntry[0] ? e->cntry : "--"
-                     , bits2str(flags, BlockBitTuples)
-                     );
-            }
+            ez_fprintf(G.listing_fh, "%-15s\t%5u/%-4u offenses %s (%s)\n"
+                  , e->addr
+                  , e->count
+                  , nAllowed
+                  , e->cntry[0] ? e->cntry : "--"
+                  , bits2str(flags, BlockBitTuples)
+                  );
+         }
 
-         } /*--- End of LOGENTRY processing ---*/
+      } /*--- End of LOGENTRY processing ---*/
 
-         unsigned currBlocked= MAP_numItems(&S.addr2logEntry_map);
+      unsigned currBlocked= MAP_numItems(&S.addr2logEntry_map);
 
-         /* List offenses by country if directed to do so */
+      /* List offenses by country if directed to do so */
+      if(G.flags & (GLB_LIST_CNTRY_FLG|GLB_LIST_SUMMARY_FLG)) {
+
+         /* Map for indexing cntryStat objects */
+         static MAP byCntry_map;
+         MAP_sinit(&byCntry_map, 100, 100);
+
+         /* Build index by trawling existing by-address map */
+         MAP_visitAllEntries(&S.addr2logEntry_map, (int(*)(void*,void*))map_byCountries, &byCntry_map);
+
+         /* Now get all cntStat handles in a vector */
+         unsigned vec_sz= MAP_numItems(&byCntry_map);
+         struct cntryStat *rtn_vec[vec_sz];
+
+         MAP_fetchAllItems(&byCntry_map, (void**)rtn_vec);
+
+         /* Sort high to low */
+         qsort(rtn_vec, vec_sz, sizeof(struct cntryStat*), cntryStat_count_qsort);
+
          if(G.flags & GLB_LIST_CNTRY_FLG) {
-
-            /* Map for indexing cntryStat objects */
-            static MAP byCntry_map;
-            MAP_sinit(&byCntry_map, 100, 100);
-
-            /* Build index by trawling existing by-address map */
-            MAP_visitAllEntries(&S.addr2logEntry_map, (int(*)(void*,void*))map_byCountries, &byCntry_map);
-
-            /* Now get all cntStat handles in a vector */
-            unsigned vec_sz= MAP_numItems(&byCntry_map);
-            struct cntryStat *rtn_vec[vec_sz];
-
-            MAP_fetchAllItems(&byCntry_map, (void**)rtn_vec);
-
-            /* Sort high to low */
-            qsort(rtn_vec, vec_sz, sizeof(struct cntryStat*), cntryStat_count_qsort);
-
             /* Print results */
             for(unsigned i= 0; i < vec_sz; ++i) {
 
                struct cntryStat *cs= rtn_vec[i];
-               ez_fprintf(stdout, "%2s  %5u blocked addresses\n"
+               ez_fprintf(G.listing_fh, "%2s  %5u blocked addresses\n"
                      , cs->cntry[0] ? cs->cntry : "--"
                      , cs->nAddr
                      );
             }
 
-            if(G.flags & GLB_PRINT_MASK) {
-               ez_fprintf(stdout,
-"===============================================\n"
-"%6u addresses currently blocked\n"
-"%6u countries affected\n"
-                          , currBlocked
-                          , vec_sz
-                         );
-            }
-
-         } else {
-
-            /* Take care of summary blocking and reporting */
-            unsigned n2Block= PTRVEC_numItems(&S.toBlock_vec);
-            unsigned n2Unblock= PTRVEC_numItems(&S.toUnblock_vec);
-         
-            if(G.flags & GLB_PRINT_MASK)
-               ez_fprintf(stdout, "===============================================\n");
-
-            if(!(G.flags & GLB_DONT_IPTABLE_FLG)) {
-
-               if(n2Block) {
-
-                  if(IPTABLES_block_addresses(&S.toBlock_vec, 10)) {
-                     eprintf("ERROR: cannot block addresses!");
-                     goto abort;
-                  }
-                  ez_fprintf(stdout, "Blocked %u new hosts\n", n2Block);
-               }
-
-               if(n2Unblock) {
-
-                  if(IPTABLES_unblock_addresses(&S.toUnblock_vec, 10)) {
-                     eprintf("ERROR: cannot unblock addresses!");
-                     goto abort;
-                  }
-                  ez_fprintf(stdout, "Unblocked %u hosts\n", n2Unblock);
-               }
-
-
-            } else {
-
-               if(n2Block) 
-                  ez_fprintf(stdout, "Would block %u new hosts\n", n2Block);
-
-               if(n2Unblock)
-                  ez_fprintf(stdout, "Would unblock %u new hosts\n", n2Unblock);
-            }
-
-            if(G.flags & GLB_PRINT_MASK)
-                  ez_fprintf(stdout, "%6u addresses currently blocked\n" , currBlocked + n2Block - n2Unblock);
-
+            ez_fprintf(G.listing_fh, "===============================================\n");
          }
 
+         ez_fprintf(G.listing_fh, "%6u countries affected\n" , vec_sz);
+
       }
+
+      /* Take care of summary blocking and reporting */
+      unsigned n2Block= PTRVEC_numItems(&S.toBlock_vec);
+      unsigned n2Unblock= PTRVEC_numItems(&S.toUnblock_vec);
+   
+      if(G.flags & GLB_LIST_ADDR_FLG && !(G.flags & (GLB_LIST_SUMMARY_FLG|GLB_LIST_CNTRY_FLG)))
+         ez_fprintf(G.listing_fh, "===============================================\n");
+
+      if(!(G.flags & GLB_DONT_IPTABLE_FLG)) {
+
+         if(n2Block) {
+
+            if(IPTABLES_block_addresses(&S.toBlock_vec, 10)) {
+               eprintf("ERROR: cannot block addresses!");
+               goto abort;
+            }
+            ez_fprintf(G.listing_fh, "Blocked %u new hosts\n", n2Block);
+         }
+
+         if(n2Unblock) {
+
+            if(IPTABLES_unblock_addresses(&S.toUnblock_vec, 10)) {
+               eprintf("ERROR: cannot unblock addresses!");
+               goto abort;
+            }
+            ez_fprintf(G.listing_fh, "Unblocked %u hosts\n", n2Unblock);
+         }
+
+      } else {
+
+         if(n2Block) 
+            ez_fprintf(G.listing_fh, "Would block %u new hosts\n", n2Block);
+
+         if(n2Unblock)
+            ez_fprintf(G.listing_fh, "Would unblock %u new hosts\n", n2Unblock);
+      }
+
+      if(G.flags & (GLB_LIST_ADDR_FLG|GLB_LIST_SUMMARY_FLG))
+            ez_fprintf(G.listing_fh, "%6u addresses currently blocked\n" , currBlocked + n2Block - n2Unblock);
+
    }
 
+   fflush(G.listing_fh);
+
+   /* Wait for pager to finish, if it is running */
+   if(S.flags & PAGER_RUNNING_FLG)
+      ez_pclose(G.listing_fh);
 
    rtn= EXIT_SUCCESS;
 abort:
