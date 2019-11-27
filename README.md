@@ -14,9 +14,9 @@ times a minute on my rather modest Linode virtual server to have a chance of
 stopping them. Here are the timing results for a typical scan on my wimpy server:
 
 ```
-real    0m0.119s
-user    0m0.073s
-sys     0m0.047s
+real    0m0.269s
+user    0m0.108s
+sys     0m0.134s
 ```
 
 Currently I am running *fail2ban* every 5 seconds. I hope you find this code useful.
@@ -50,8 +50,15 @@ LOGTYPE auth {
 
 Syntax in the config file is pretty much the same as the nftables syntax. All
 keywords must be in upper case.  Any values in the key=value pairs have
-whitespace stripped from the beginning and end of the line. Since there is no
-escaping of characters going on, regular expressions are WYSIWYG.
+whitespace stripped from the beginning and end of the line. Since there is
+little escaping of characters going on, regular expressions are mostly WYSIWYG.
+If you have a hash symbol '#' in your pattern (which is the comment character
+for the config file parser), you will need to escape it like so:
+
+```
+# Nov 27 02:03:03 srv named[764]: client @0x7fe6a0053420 1.192.90.183#27388 (www.ipplus360.com): query (cache) 'www.ipplus360.com/A/IN' denied
+   REGEX= named.*client.* ([0-9.a-f:]+)\#.*denied$
+```
 
 Finding typos and so forth in the config file is easy; use the -v command flag
 to print all unrecognized content (besides comments).
@@ -126,7 +133,7 @@ production mode.
 I've tested *ban2fail* only on Debian Buster, but it should compile on just
 about any modern Linux distro. It uses the following libraries:
 
-+ *libcrypto* for md5 checksums
++ *libcrypto* from the libssl package, for md5 checksums
 
 + *libgeoip* to identify the country of origin for IP addresses
 
@@ -140,6 +147,4 @@ sudo make install
 ```
 
 The executable will be placed in "/usr/local/bin".
-
-
 

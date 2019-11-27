@@ -230,15 +230,17 @@ main(int argc, char **argv)
 
       if(errflg) {
          ez_fprintf(stderr, 
+"ban2fail v%d.%d.%d\n"
 "Usage:\n"
 "%s [options] [-t confFile]\n"
 "  --help\tprint this usage message.\n"
 "  -a\t\tList results by Address\n"
 "  -c\t\tlist results by Country\n"
-"  -s\t\tlist summary address result only\n"
+"  -s\t\tlist Summary results only\n"
 "  -t confFile\tTest confFile, do not apply iptables rules\n"
 "  -v\t\tVerbose information about unrecognized configuration info\n"
 "  --version\tprint the version number and exit.\n"
+         , G.version.major, G.version.minor, G.version.patch
          , argv[0]
          );
 
