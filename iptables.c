@@ -49,7 +49,7 @@ initialize (void)
    const static struct ipv {
       const char *cmd,
                  *pattern;
-   } Ipv[] = {
+   } ipv_arr[] = {
       { .cmd= IPTABLES " -nL INPUT 2>/dev/null",
         .pattern= "DROP[[:space:]]+all[[:space:]]+--[[:space:]]+([0-9.]+)[[:space:]]+0\\.0\\.0\\.0/0"
       },
@@ -59,7 +59,8 @@ initialize (void)
       { /* Terminating member */ }
    };
 
-   for(const struct ipv *ipv= Ipv; ipv->cmd; ++ipv) {
+   /* Take care of all ip versions ... */
+   for(const struct ipv *ipv= ipv_arr; ipv->cmd; ++ipv) {
 
       static char lbuf[1024];
       static char addr[43];

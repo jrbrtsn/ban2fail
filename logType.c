@@ -104,8 +104,15 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
    self->dir= strdup(proto->dir);
    self->pfix= strdup(proto->pfix);
 
-   if(G.flags & GLB_PRINT_LOGFILE_NAMES_FLG)
+   if(G.flags & GLB_PRINT_LOGFILE_NAMES_FLG) {
+
       ez_fprintf(G.listing_fh, "%s/%s\n", proto->dir, proto->pfix);
+      /* We're going to save time here and short circuit the remainder
+       * of the process; because this object will not get used for
+       * anything other than listing the file names.
+       */
+      return self;
+   }
 
    size_t pfix_len= strlen(self->pfix);
 
@@ -192,6 +199,10 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          /* Now we have the checksum of the log file */
          /* See if the cached results exist */
          rc= snprintf(CacheFname, sizeof(CacheFname), "%s/%s", CacheDname, sumStr);
+         if(sizeof(CacheFname) == rc) {
+            eprintf("FATAL: File path truncated!");
+            exit(1);
+         }
          LOGFILE *f;
 
          if(!access(CacheFname, F_OK)) {
@@ -248,6 +259,10 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          if(f) continue;
 
          rc= snprintf(CacheFname, sizeof(CacheFname), "%s/%s", CacheDname, entry->d_name);
+         if(sizeof(CacheFname) == rc) {
+            eprintf("FATAL: File path truncated!");
+            exit(1);
+         }
          ez_unlink(CacheFname);
       }
 
@@ -336,6 +351,10 @@ LOGTYPE_init(CFGMAP *h_map, char *pfix)
       LOGTYPE *obj;
       LOGTYPE_proto_create(obj, &proto);
       assert(obj);
+
+      /* Short circuit remainder of process if only printing file names */
+      if(G.flags & GLB_PRINT_LOGFILE_NAMES_FLG)
+         return 0;
 
       /* Place int the global map */
       MAP_addStrKey(&G.logType_map, LOGTYPE_cacheName(obj), obj);
