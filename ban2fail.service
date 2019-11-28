@@ -1,11 +1,11 @@
 [Unit]
 Description=Log file scanning and iptables filtering
-ConditionPathExists=/etc/ban2fail/ban2fail.sh
+ConditionPathExists=/usr/local/share/ban2fail/ban2fail.sh
 
 [Service]
 WorkingDirectory=/tmp
 Type=simple
-ExecStart=/etc/ban2fail/ban2fail.sh
+ExecStart=/usr/local/share/ban2fail/ban2fail.sh
 TimeoutSec=0
 
 [Install]

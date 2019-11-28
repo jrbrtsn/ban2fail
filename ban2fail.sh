@@ -41,7 +41,9 @@ while true; do
       echo "Running $BAN2FAIL"
       # Check for offenses
       # If ban2fail failed, then pause to avoid DOS on CPU
-      $TIME $BAN2FAIL || sleep 1
+      while ! $TIME $BAN2FAIL; do
+         sleep 1
+      done
 
    done < <(exec $INOTIFYWAIT -m $LOG_NAMES)
 
