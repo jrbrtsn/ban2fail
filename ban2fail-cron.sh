@@ -12,9 +12,13 @@ TRIES=
 
 for (( TRIES= 0; TRIES < 10; ++TRIES )); do
 
+# cron generates an entry in auth.log when it runs, which means
+# ban2fail.sh will launch ban2fail because of the new log entry.
+# Solution is to pause for a second before running ban2fail here.
+   sleep 1
+
    $BAN2FAIL -s && break
 
-   sleep 1
 
 done
 

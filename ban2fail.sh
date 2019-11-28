@@ -4,6 +4,9 @@
 # The purpose of this script is to be run from a systemd service
 # file, or sysvinit script.
 #
+# BE CAREFUL not to monitor the log file to which output from this
+# script gets written - you will have a feedback loop!
+#
 
 BAN2FAIL=/usr/local/bin/ban2fail
 BAN2FAIL_CFG=/etc/ban2fail/ban2fail.cfg

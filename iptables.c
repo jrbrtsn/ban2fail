@@ -46,34 +46,55 @@ initialize (void)
 
    MAP_constructor(&S.addr_map, 1000, 200);
 
-   static char lbuf[1024];
-   static char addr[64];
-   FILE *fh= ez_popen(IPTABLES " -nL INPUT 2>/dev/null", "r");
+   const static struct ipv {
+      const char *cmd,
+                 *pattern;
+   } Ipv[] = {
+      { .cmd= IPTABLES " -nL INPUT 2>/dev/null",
+        .pattern= "DROP[[:space:]]+all[[:space:]]+--[[:space:]]+([0-9.]+)[[:space:]]+0\\.0\\.0\\.0/0"
+      },
+      { .cmd= IP6TABLES " -nL INPUT 2>/dev/null",
+        .pattern= "DROP[[:space:]]+all[[:space:]]+([0-9a-f:]+)[[:space:]]+::/0"
+      },
+      { /* Terminating member */ }
+   };
 
-   unsigned i;
-   for(i= 0; ez_fgets(lbuf, sizeof(lbuf)-1, fh); ++i) {
-      if(0 == i || 1 == i) continue;
-      if(1 != sscanf(lbuf, "DROP all -- %63s 0.0.0.0/0", addr)) {
-         eprintf("ERROR: scanning pattern");
-         continue;
+   for(const struct ipv *ipv= Ipv; ipv->cmd; ++ipv) {
+
+      static char lbuf[1024];
+      static char addr[43];
+      regex_t re;
+      regmatch_t matchArr[2];
+      size_t len;
+      FILE *fh= NULL;
+
+      if(regex_compile(&re, ipv->pattern, REG_EXTENDED)) {   
+         eprintf("ERROR: regex_compile(\"%s\") failed.", ipv->pattern);
+         exit(1);
+      }   
+         
+      fh= ez_popen(ipv->cmd, "r");
+
+      while(ez_fgets(lbuf, sizeof(lbuf)-1, fh)) {
+
+         /* Filter all that looks uninteresting */
+         if(regexec(&re, lbuf, 2, matchArr, 0)) continue;
+
+         /* Compute the length needed for the address string */
+         len= matchArr[1].rm_eo -  matchArr[1].rm_so;
+
+         /* Copy address into a null terminated static buffer */
+         strncpy(addr, lbuf + matchArr[1].rm_so, sizeof(addr)-1);
+         addr[len]= '\0';
+
+         if(MAP_findStrItem(&S.addr_map, addr))
+            eprintf("WARNING: duplicate iptable entry for %s", addr);
+         else
+            MAP_addStrKey(&S.addr_map, addr, strdup(addr));
       }
-      MAP_addStrKey(&S.addr_map, addr, strdup(addr));
+      ez_pclose(fh);
+      regfree(&re);
    }
-   ez_pclose(fh);
-
-   fh= ez_popen(IP6TABLES " -nL INPUT 2>/dev/null", "r");
-   for(i= 0; ez_fgets(lbuf, sizeof(lbuf)-1, fh); ++i) {
-      if(0 == i || 1 == i) continue;
-
-// DROP       all      2607:5300:60:653b::  ::/0
-      if(1 != sscanf(lbuf, "DROP all %63s ::/0", addr)) {
-         eprintf("ERROR: scanning pattern");
-         continue;
-      }
-      MAP_addStrKey(&S.addr_map, addr, strdup(addr));
-   }
-   ez_pclose(fh);
-
 }
 
 int

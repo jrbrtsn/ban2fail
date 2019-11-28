@@ -95,7 +95,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 11,
-      .patch= 3
+      .patch= 5
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -290,7 +290,7 @@ main(int argc, char **argv)
 
    /* Default sending listing to stdout */
    G.listing_fh= stdout;
-
+#ifndef DEBUG
    /* if stdout is a tty, and listing is likely
     * to be long, then use $PAGER.
     */
@@ -298,7 +298,7 @@ main(int argc, char **argv)
       S.flags |= PAGER_RUNNING_FLG;
       G.listing_fh= pager_open();
    }
-
+#endif
    assert(G.listing_fh);
 
 
