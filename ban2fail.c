@@ -95,7 +95,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 11,
-      .patch= 6
+      .patch= 7
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -449,7 +449,7 @@ main(int argc, char **argv)
          /* Print out only for list option */
          if(G.flags & GLB_LIST_ADDR_FLG) {
 
-            ez_fprintf(G.listing_fh, "%-15s\t%5u/%-4u offenses %s (%s)\n"
+            ez_fprintf(G.listing_fh, "%-15s\t%5u/%-4d offenses %s (%s)\n"
                   , e->addr
                   , e->count
                   , nAllowed
