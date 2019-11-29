@@ -95,7 +95,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 11,
-      .patch= 8
+      .patch= 9
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -532,7 +532,7 @@ main(int argc, char **argv)
             ez_fprintf(G.listing_fh, "Would block %u new hosts\n", n2Block);
 
          if(n2Unblock)
-            ez_fprintf(G.listing_fh, "Would unblock %u new hosts\n", n2Unblock);
+            ez_fprintf(G.listing_fh, "Would unblock %u hosts\n", n2Unblock);
       }
 
       if(G.flags & (GLB_LIST_ADDR_FLG|GLB_LIST_SUMMARY_FLG))
