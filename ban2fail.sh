@@ -8,9 +8,12 @@
 # script is written - you will have a feedback loop!
 #
 
-BAN2FAIL=/usr/local/bin/ban2fail
 BAN2FAIL_CFG=/etc/ban2fail/ban2fail.cfg
 INOTIFYWAIT=/usr/bin/inotifywait
+BAN2FAIL=/usr/local/bin/ban2fail
+
+# For testing only
+#BAN2FAIL="/usr/local/bin/ban2fail -t $BAN2FAIL_CFG"
 
 # Uncomment this if you wish to see output from the time command
 #TIME=time
@@ -24,72 +27,65 @@ MIN_PERIOD_DS=3
 
 while true; do
    echo "Starting main loop"
-   LOG_NAMES=$($BAN2FAIL --print-lfn | tr $'\n' ' ')
-   LOG_NAMES="$LOG_NAMES $BAN2FAIL_CFG"
+   MON_FNAMES=$($BAN2FAIL --print-lfn | tr $'\n' ' ')
+   MON_FNAMES="$MON_FNAMES $BAN2FAIL_CFG"
 
    # Always do initial check
    echo "Initial run for $BAN2FAIL"
    RAN_NS=$(date +%s%N)
    $TIME $BAN2FAIL
 
-   echo "Monitoring: $LOG_NAMES"
+   echo "Monitoring: $MON_FNAMES"
 
-   while read; do
+   while read FILE OPS; do
 
-      # if a file gets renamed, logrotate is doing it's thing.
-      [[ "$REPLY" =~ MOVE_SELF ]] && break
-      [[ "$REPLY" == $BAN2FAIL_CFG\ MODIFY ]] && break
+      case "$OPS" in
+         MOVE_SELF) break;;
 
-      [[ "$REPLY" =~ MODIFY ]] || continue
+         MODIFY) [[ "$FILE" == $BAN2FAIL_CFG ]] && break;;
+
+         *) continue;;
+      esac
 
 # Uncomment this to see the inotifywait output which triggered this cycle
-#echo "REPLY= '$REPLY'"
+echo "FILE= '$FILE', OPS= '$OPS'"
 
       NOW_NS=$(date +%s%N)
       (( SINCE_NS = NOW_NS - RAN_NS ))
-#echo "RAN_NS= $RAN_NS, NOW_NS= $NOW_NS, SINCE_NS= $SINCE_NS, MIN_PERIOD_NS= $MIN_PERIOD_NS"
+
       if (( SINCE_NS < MIN_PERIOD_NS )); then
 
          (( REMAINING_NS = MIN_PERIOD_NS - SINCE_NS ))
 
-         # break sleep time into seconds and nanosecond remainder components
+         # 'sleep' command wants a string representation of floating point number of seconds,
+         # so we need to break sleep time into seconds and nanosecond remainder components
          (( REMAINING_SEC = REMAINING_NS / 1000000000 ))
          (( REMAINING_NS_REM = REMAINING_NS % 1000000000 ))
-
-#echo "REMAINING_NS= $REMAINING_NS, REMAINING_SEC= $REMAINING_SEC, REMAINING_NS_REM= $REMAINING_NS_REM"
 
          if (( REMAINING_SEC || REMAINING_NS_REM > 1000000 )); then
 
             # use printf command to format as floating point string
-            remaining_sec_fp=$(printf '%d.%09d' $REMAINING_SEC $REMAINING_NS_REM)
-
-#echo "sleeping for $remaining_sec_fp seconds"
+            REMAINING_SEC_FP=$(printf '%d.%09d' $REMAINING_SEC $REMAINING_NS_REM)
 
             # sleep for floating point period of seconds
-            sleep $remaining_sec_fp
+            sleep $REMAINING_SEC_FP
          fi
-
       fi
-
-      # Consume queued input to avoid running ban2fail more than necessary
-      while read -t 0; do read; done
 
       echo "Running $BAN2FAIL"
 
-      # Check for offenses
-      # If ban2fail failed, then pause to avoid monopolizing CPU
+      # Here is where we check for offenses.
+      # If ban2fail failes it is probably because logrotated
+      # is managing the log files, so bail out...
       RAN_NS=$(date +%s%N)
-      while ! $TIME $BAN2FAIL; do
-         sleep .5
-         RAN_NS=$(date +%s%N)
-      done
+      $TIME $BAN2FAIL || break
 
+   done < <(exec $INOTIFYWAIT -m $MON_FNAMES)
 
-   done < <(exec $INOTIFYWAIT -m $LOG_NAMES)
-
-   echo ' Exiting main loop'
-
+   echo 'Exiting main loop'
+   # Pause to let things settle down
    sleep 1
+
 done
 
 

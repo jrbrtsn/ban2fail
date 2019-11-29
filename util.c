@@ -39,9 +39,7 @@ Common utility routines needed by most c and c++ applications.
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include "ez_dirent.h"
-#include "ez_stdio.h"
-#include "ez_stdlib.h"
+#include "ez_libc.h"
 #include "util.h"
 
 #define MSGBUF_SZ 4096

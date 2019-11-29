@@ -23,7 +23,7 @@
 #include <unistd.h>
 
 #include "ban2fail.h"
-#include "ez_stdio.h"
+#include "ez_libc.h"
 #include "iptables.h"
 #include "logEntry.h"
 #include "map.h"

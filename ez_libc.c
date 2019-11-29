@@ -20,7 +20,7 @@
 #include <unistd.h>
 
 #include "util.h"
-#include "ez_stdio.h"
+#include "ez_libc.h"
 
 /***************************************************/
 int _ez_fputs (
@@ -236,3 +236,155 @@ int _ez_rename (
    return rtn;
 }
 
+/***************************************************/
+DIR* _ez_opendir (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      const char *name
+      )
+{
+   DIR *rtn= opendir (name);
+   if (!rtn) {
+      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "opendir(\"%s\") failed", name);
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+int _ez_closedir (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      DIR *dirp
+      )
+{
+   int rtn= closedir (dirp);
+   if (-1 == rtn) {
+      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "closedir() failed");
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+struct dirent* _ez_readdir (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      DIR *dirp
+      )
+{
+
+   /* Pass on doctored format string and varargs to vfprintf() */
+   errno= 0;
+   struct dirent* rtn= readdir(dirp);
+
+   if (!rtn && errno) {
+      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "readdir() failed");
+      abort();
+   }
+
+   return rtn;
+}
+
+/***************************************************/
+int _ez_close (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      int fd
+      )
+{
+   int rtn= close (fd);
+   if (-1 == rtn) {
+      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "close(%d) failed", fd);
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+ssize_t _ez_write (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      int fd,
+      const void *buf,
+      size_t count
+      )
+{
+   ssize_t rtn= write (fd, buf, count);
+   if (-1 == rtn) {
+      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "write(fd= %d) failed", fd);
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+int _ez_stat (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      const char *pathname,
+      struct stat *statbuf
+      )
+{
+   int rtn= stat (pathname, statbuf);
+   if (-1 == rtn) {
+      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "stat(\"%s\") failed", pathname);
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+int _ez_mkdir (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      const char *pathname,
+      mode_t mode
+      )
+{
+   int rtn= mkdir (pathname, mode);
+   if (-1 == rtn) {
+      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "mkdir(\"%s\", %04x) failed", pathname, (unsigned)mode);
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+int _ez_rmdir (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      const char *pathname
+      )
+{
+   int rtn= rmdir (pathname);
+   if (-1 == rtn) {
+      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "rmdir(\"%s\") failed", pathname);
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+int _ez_unlink (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      const char *pathname
+      )
+{
+   int rtn= unlink (pathname);
+   if (-1 == rtn) {
+      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "unlink(\"%s\") failed", pathname);
+      abort();
+   }
+   return rtn;
+}

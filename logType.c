@@ -30,9 +30,7 @@
 #include "logEntry.h"
 #include "logFile.h"
 #include "logType.h"
-#include "ez_dirent.h"
-#include "ez_stdio.h"
-#include "ez_stdlib.h"
+#include "ez_libc.h"
 #include "str.h"
 #include "util.h"
 

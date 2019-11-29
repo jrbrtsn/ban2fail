@@ -57,6 +57,7 @@ extern struct Global {
       GLB_DONT_IPTABLE_FLG  =1<<3,
       GLB_LIST_SUMMARY_FLG  =1<<4,
       GLB_PRINT_LOGFILE_NAMES_FLG  =1<<5,
+      GLB_DNS_LOOKUP_FLG    =1<<6,
       GLB_LONG_LISTING_FLG = GLB_LIST_CNTRY_FLG|GLB_LIST_ADDR_FLG
    } flags;
 

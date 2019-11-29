@@ -18,17 +18,22 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 /***************************************************************************
-                          ez_stdio.h  -  description                              
-stdio calls with boilerplate error handling.
+                          ez_libc.h  -  description                              
+libc calls with boilerplate error handling.
 
                              -------------------
     begin                : Tue Nov 13 19:42:23 EST 2018
     email                : john@rrci.com                                     
  ***************************************************************************/
-#ifndef EZ_STDIO_H
-#define EZ_STDIO_H
+#ifndef EZ_LIBC_H
+#define EZ_LIBC_H
 
+#include <dirent.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -158,6 +163,107 @@ int _ez_rename (
       const char *oldpath,
       const char *newpath
       );
+
+#define ez_opendir(name) \
+   _ez_opendir(__FILE__, __LINE__, __FUNCTION__, name)
+DIR* _ez_opendir (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      const char *name
+      );
+
+#define ez_closedir(dirp) \
+   _ez_closedir(__FILE__, __LINE__, __FUNCTION__, dirp)
+int _ez_closedir (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      DIR *dirp
+      );
+
+#define ez_readdir(dirp) \
+         _ez_readdir(__FILE__, __LINE__, __FUNCTION__, dirp)
+struct dirent* _ez_readdir (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      DIR *dirp
+      );
+
+#define ez_close(fd) \
+         _ez_close(__FILE__, __LINE__, __FUNCTION__, fd)
+int _ez_close (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      int fd
+      );
+
+#if 0
+// FIXME: this needs to be implemented and tested
+#define ez_read(fd, buf, count) \
+         _ez_read(__FILE__, __LINE__, __FUNCTION__, fd, buf, count)
+ssize_t _ez_read (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      int fd,
+      void *buf,
+      size_t count
+      );
+#endif
+
+#define ez_write(fd, buf, count) \
+         _ez_write(__FILE__, __LINE__, __FUNCTION__, fd, buf, count)
+ssize_t _ez_write (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      int fd,
+      const void *buf,
+      size_t count
+      );
+
+#define ez_stat(pathname, statbuf) \
+         _ez_stat(__FILE__, __LINE__, __FUNCTION__, pathname, statbuf)
+int _ez_stat (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      const char *pathname,
+      struct stat *statbuf
+      );
+
+// FIXME: xxxdir() function should be in ez_unistd.h
+#define ez_mkdir(pathname, mode) \
+         _ez_mkdir(__FILE__, __LINE__, __FUNCTION__, pathname, mode)
+int _ez_mkdir (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      const char *pathname,
+      mode_t mode
+      );
+
+#define ez_rmdir(pathname) \
+         _ez_rmdir(__FILE__, __LINE__, __FUNCTION__, pathname)
+int _ez_rmdir (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      const char *pathname
+      );
+
+#define ez_unlink(pathname) \
+         _ez_unlink(__FILE__, __LINE__, __FUNCTION__, pathname)
+int _ez_unlink (
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      const char *pathname
+      );
+
 #ifdef __cplusplus
 }
 #endif

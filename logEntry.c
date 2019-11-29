@@ -23,7 +23,7 @@
 
 #include "ban2fail.h"
 #include "cntry.h"
-#include "ez_stdio.h"
+#include "ez_libc.h"
 #include "map.h"
 #include "logEntry.h"
 #include "util.h"

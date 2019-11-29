@@ -31,10 +31,8 @@
 
 #include "ban2fail.h"
 #include "cntry.h"
-#include "ez_dirent.h"
-#include "ez_gzfile.h"
-#include "ez_stdio.h"
-#include "ez_stdlib.h"
+#include "ez_libc.h"
+#include "ez_libz.h"
 #include "iptables.h"
 #include "logEntry.h"
 #include "logFile.h"
@@ -94,8 +92,8 @@ struct Global G= {
 
    .version= {
       .major= 0,
-      .minor= 11,
-      .patch= 9
+      .minor= 12,
+      .patch= 0
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -185,7 +183,7 @@ main(int argc, char **argv)
 
          int c, option_ndx= 0;
 
-         c= getopt_long(argc, argv, ":acst:v", long_options, &option_ndx);
+         c= getopt_long(argc, argv, ":a::cst:v", long_options, &option_ndx);
 
          if(-1 == c) break;
 
@@ -202,6 +200,11 @@ main(int argc, char **argv)
 
             case 'a':
                G.flags |= GLB_LIST_ADDR_FLG;
+               if(optarg && *optarg == '+') {
+                  G.flags |= GLB_DNS_LOOKUP_FLG;
+               } else {
+                  ++errflg;
+               }
                break;
 
             case 's':
@@ -239,7 +242,7 @@ main(int argc, char **argv)
 "ban2fail v%d.%d.%d Usage:\n"
 "%s [options] [-t confFile]\n"
 "  --help\tprint this usage message.\n"
-"  -a\t\tList results by Address\n"
+"  -a[+]\t\tList results by Address. '+' to perform DNS reverse lookups.\n"
 "  -c\t\tlist results by Country\n"
 "  -s\t\tlist Summary results only\n"
 "  -t confFile\tTest confFile, do not apply iptables rules\n"

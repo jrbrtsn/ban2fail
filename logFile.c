@@ -28,8 +28,8 @@
 #include "cntry.h"
 #include "logEntry.h"
 #include "logFile.h"
-#include "ez_stdio.h"
-#include "ez_gzfile.h"
+#include "ez_libc.h"
+#include "ez_libz.h"
 #include "util.h"
 
 enum {

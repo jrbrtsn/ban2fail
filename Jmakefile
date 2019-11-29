@@ -3,7 +3,7 @@ libsDir := $(baseDir)/libs
 projectName := ban2fail
 versions := debug release
 cc_exe := ban2fail
-install_dir := /usr/local/bin
+#install_dir := /usr/local/bin
 
 
 ########################################
@@ -15,10 +15,8 @@ src := \
        ban2fail.c \
        cfgmap.c \
        cntry.c \
-       ez_dirent.c \
-       ez_gzfile.c \
-       ez_stdio.c \
-       ez_stdlib.c \
+       ez_libc.c \
+       ez_libz.c \
        iptables.c \
        logType.c \
        logEntry.c \
