@@ -3,7 +3,7 @@ libsDir := $(baseDir)/libs
 projectName := ban2fail
 versions := debug release
 cc_exe := ban2fail
-#install_dir := /usr/local/bin
+install_dir := /usr/local/bin
 
 
 ########################################
