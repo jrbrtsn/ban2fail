@@ -16,23 +16,17 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
+#define _GNU_SOURCE
 #include <assert.h>
-#include <ctype.h>
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
 #include <getopt.h>
-#include <limits.h>
-#include <string.h>
+#include <signal.h>
 #include <sys/file.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/wait.h>
+#include <unistd.h>
 
 #include "ban2fail.h"
 #include "cntry.h"
+#include "ez_libanl.h"
 #include "ez_libc.h"
-#include "ez_libz.h"
 #include "iptables.h"
 #include "logEntry.h"
 #include "logFile.h"
@@ -69,10 +63,10 @@ struct initInfo {
 
 static int cntryStat_count_qsort(const void *p1, const void *p2);
 static int configure(CFGMAP *h_cfgmap, const char *pfix);
+static const char* reverse_dns_lookup(const char *addr);
 static int logentry_count_qsort(const void *p1, const void *p2);
 static int map_byCountries(LOGENTRY *e, MAP *h_map);
 static int stub_init(CFGMAP *map, char *symStr);
-static int whitelist_init(CFGMAP *h_cfgmap, char *symStr);
 
 
 /*==================================================================*/
@@ -133,6 +127,17 @@ static struct {
    PTRVEC toBlock_vec,
           toUnblock_vec;
 
+   /* Used for reverse DNS lookups */
+   struct {
+      struct gaicb **cbPtrArr,
+                   *cbArr;
+   } gai;
+
+   /* Used to place LOGENTRY address objects into linear
+    * access container.
+    */
+   LOGENTRY **lePtrArr;
+
 } S;
 
 /*==================================================================*/
@@ -162,7 +167,7 @@ main(int argc, char **argv)
    MAP_constructor(&G.logType_map, 10, 10);
 
    // local
-   MAP_constructor(&S.addr2logEntry_map, N_ADDRESSES_HINT/10, 10);
+   MAP_constructor(&S.addr2logEntry_map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
 
    PTRVEC_constructor(&S.toBlock_vec, N_ADDRESSES_HINT);
    PTRVEC_constructor(&S.toUnblock_vec, N_ADDRESSES_HINT);
@@ -200,10 +205,11 @@ main(int argc, char **argv)
 
             case 'a':
                G.flags |= GLB_LIST_ADDR_FLG;
-               if(optarg && *optarg == '+') {
-                  G.flags |= GLB_DNS_LOOKUP_FLG;
-               } else {
-                  ++errflg;
+               if(optarg) {
+                  if(*optarg == '+')
+                     G.flags |= GLB_DNS_LOOKUP_FLG;
+                  else
+                     ++errflg;
                }
                break;
 
@@ -380,7 +386,7 @@ main(int argc, char **argv)
 
       if(G.flags & GLB_LONG_LISTING_FLG) {
          MAP map;
-         MAP_constructor(&map, N_ADDRESSES_HINT/10, 10);
+         MAP_constructor(&map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
 
          unsigned nOffFound= 0,
                   nAddrFound;
@@ -414,15 +420,115 @@ main(int argc, char **argv)
 
       unsigned nItems= MAP_numItems(&S.addr2logEntry_map);
 
-      LOGENTRY *leArr[nItems];
-      MAP_fetchAllItems(&S.addr2logEntry_map, (void**)leArr);
-      qsort(leArr, nItems, sizeof(LOGENTRY*), logentry_count_qsort);
+      /* allocate this array, let it leak */
+      S.lePtrArr= malloc(sizeof(void*) * nItems);
+      assert(S.lePtrArr);
+
+      MAP_fetchAllItems(&S.addr2logEntry_map, (void**)S.lePtrArr);
+      qsort(S.lePtrArr, nItems, sizeof(LOGENTRY*), logentry_count_qsort);
+
+      /* Special processing for DNS lookups */
+      if(G.flags & GLB_DNS_LOOKUP_FLG) {
+
+         static struct sigevent sev= {.sigev_notify= SIGEV_NONE};
+         const static struct addrinfo hints= {
+            .ai_family = AF_UNSPEC,
+            .ai_flags = AI_NUMERICHOST
+         };
+
+         /* Allocate array of structures */
+         S.gai.cbArr= calloc(sizeof(struct gaicb), nItems);
+         assert(S.gai.cbArr);
+
+         /* Allocate pointer array */
+         S.gai.cbPtrArr= malloc(sizeof(struct gaicb*) * nItems);
+         assert(S.gai.cbPtrArr);
+
+         /* Fill out cbPtrArr with addresses, populate structures */
+         for(unsigned i= 0; i < nItems; ++i) {
+
+            LOGENTRY *e= S.lePtrArr[i];
+            struct gaicb *cb=  S.gai.cbArr+i;
+
+            /* Populate gaicb object */
+            cb->ar_name= e->addr;
+            cb->ar_request= &hints;
+
+            /* Place object address in cbPtrArr */
+            S.gai.cbPtrArr[i]= cb;
+         }
+
+         /* See if we can submit all of our requests */
+eprintf("Submitting %u addresses for lookup", nItems);
+         int rc= ez_getaddrinfo_a(GAI_NOWAIT, S.gai.cbPtrArr, nItems, &sev);
+         if(rc)
+            eprintf("returned %d", rc);
+         assert(0 == rc);
+
+         // TODO: define max timeout on command line
+         static struct timespec ts;
+         ms2timespec(&ts, 10*1000);
+
+         /* Pause for parallel DNS lookups */
+         for(;;) {
+            int rc= ez_gai_suspend((const struct gaicb*const*)S.gai.cbPtrArr, nItems, &ts);
+            switch(rc) {
+               case 0:
+               case EAI_INTR:
+                  continue;
+
+               case EAI_ALLDONE:
+                  break;
+
+               default:
+                  eprintf("INFO: gai_suspend() failed, rc= %d [%s]", rc, gai_strerror(rc));
+                  abort();
+            }
+            break;
+         }
+
+         eprintf("All done");
+         unsigned nSucc= 0,
+                  nFail= 0;
+
+         /* Cancel any ongoing lookups */
+         gai_cancel(NULL);
+
+         /* Now check each gaicb object */
+         for(unsigned i= 0; i < nItems; ++i) {
+
+            struct gaicb *cb=  S.gai.cbArr + i;
+            int status= gai_error(cb);
+            static char hostBuf[PATH_MAX];
+
+            switch(status) {
+
+               case 0: {
+                  ++nSucc;
+                  assert(cb->ar_name && cb->ar_result);
+                  struct addrinfo *ai= cb->ar_result;
+                  assert(ai->ai_addr && ai->ai_addrlen);
+
+                  int rc= ez_getnameinfo(ai->ai_addr, ai->ai_addrlen, hostBuf, sizeof(hostBuf)-1, NULL, 0, NI_NAMEREQD);
+                  eprintf("%s= %s", cb->ar_name, rc ? "unknown" : hostBuf);
+                 } break;
+
+               default:
+                  ++nFail;
+                  eprintf("INFO: status= %d [%s]", status, gai_strerror(status));
+                  continue;
+            }
+
+            // TODO: use the result
+         }
+         eprintf("nItems= %u, nSucc= %u, nFail= %u", nItems, nSucc, nFail);
+      } /* End of GLB_DNS_LOOKUP_FLG */
 
       /* Process each LOGENTRY item */
       for(unsigned i= 0; i < nItems; ++i) {
          int flags=0;
 
-         LOGENTRY *e= leArr[i];
+         LOGENTRY *e= S.lePtrArr[i];
 
          if(IPTABLES_is_currently_blocked(e->addr))
             flags |= BLOCKED_FLG;
@@ -451,13 +557,22 @@ main(int argc, char **argv)
 
          /* Print out only for list option */
          if(G.flags & GLB_LIST_ADDR_FLG) {
+            const char *dns_name= NULL;
+#if 0
+            if(G.flags & GLB_DNS_LOOKUP_FLG)
+               dns_name= reverse_dns_lookup(e->addr);
+#endif
 
-            ez_fprintf(G.listing_fh, "%-15s\t%5u/%-4d offenses %s (%s)\n"
+            const static char *dns_fmt= "%-15s\t%5u/%-4d offenses %s (%s) [%s]\n",
+                              *fmt= "%-15s\t%5u/%-4d offenses %s (%s)\n";
+
+            ez_fprintf(G.listing_fh, dns_name  ? dns_fmt : fmt
                   , e->addr
                   , e->count
                   , nAllowed
                   , e->cntry[0] ? e->cntry : "--"
                   , bits2str(flags, BlockBitTuples)
+                  , dns_name
                   );
          }
 
@@ -662,4 +777,33 @@ map_byCountries(LOGENTRY *e, MAP *h_map)
    return 0;
 }
 
+static const char*
+reverse_dns_lookup(const char *addr)
+/**************************************************************
+ * Do a getaddrinfo() reverse lookup on addr
+ */
+{
+   const char *rtn= NULL;
+   static char hostBuf[PATH_MAX];
+   static struct addrinfo hints,
+                          *res;
+   memset(&hints, 0, sizeof(hints));
+   res= NULL;
 
+   hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+   hints.ai_flags = AI_NUMERICHOST; /* Only doing reverse lookups */
+
+   int rc= ez_getaddrinfo(addr, NULL, &hints, &res);
+   assert(0 == rc);
+
+   assert(res && res->ai_addr && res->ai_addrlen);
+
+   rc= ez_getnameinfo(res->ai_addr, res->ai_addrlen, hostBuf, sizeof(hostBuf)-1, NULL, 0, NI_NAMEREQD);
+   if(rc) return NULL;
+
+   rtn= hostBuf;
+
+abort:
+   if(res) freeaddrinfo(res);
+   return rtn;
+}

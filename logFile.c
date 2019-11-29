@@ -16,6 +16,7 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
+#define _GNU_SOURCE
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -47,7 +48,7 @@ common_constructor(LOGFILE *self)
  */
 {
    memset(self, 0, sizeof(*self));
-   MAP_constructor(&self->addr2logEntry_map, N_ADDRESSES_HINT/10, 10);
+   MAP_constructor(&self->addr2logEntry_map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
 }
 
 LOGFILE*

@@ -24,6 +24,7 @@ Common utility routines needed by most c and c++ applications.
     begin                : Fri Oct 19 10:09:38 EDT 2018
     email                : john@rrci.com                                     
  ***************************************************************************/
+#define _GNU_SOURCE
 #include <arpa/inet.h>
 #include <assert.h>
 #include <ctype.h>
@@ -144,12 +145,23 @@ void _sys_eprintf(
 }
 
 int64_t
-timespec_ms(const struct timespec *ts)
+timespec2ms(const struct timespec *ts)
 /**********************************************************************
  * Convert a timespec structure to integer milliseconds.
  */ 
 {
    return ts->tv_sec*1000 + ts->tv_nsec/1000000;
+}
+
+struct timespec*
+ms2timespec(struct timespec *rtnBuf, int64_t ms)
+/**********************************************************************
+ * Load up a timespec struct given number of milliseconds.
+ */ 
+{
+   rtnBuf->tv_sec= ms/1000;
+   rtnBuf->tv_nsec= (ms%1000)*1000000;
+   return rtnBuf;
 }
 
 const char*
@@ -308,7 +320,7 @@ clock_gettime_ms(clockid_t whichClock)
       sys_eprintf("\tclock_gettime() failed");
       abort();
    }
-   return timespec_ms(&ts);
+   return timespec2ms(&ts);
 }
 
 const char*

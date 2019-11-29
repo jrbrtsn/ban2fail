@@ -17,6 +17,7 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
@@ -199,7 +200,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          rc= snprintf(CacheFname, sizeof(CacheFname), "%s/%s", CacheDname, sumStr);
          if(sizeof(CacheFname) == rc) {
             eprintf("FATAL: File path truncated!");
-            exit(1);
+            exit(EXIT_FAILURE);
          }
          LOGFILE *f;
 
@@ -259,7 +260,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          rc= snprintf(CacheFname, sizeof(CacheFname), "%s/%s", CacheDname, entry->d_name);
          if(sizeof(CacheFname) == rc) {
             eprintf("FATAL: File path truncated!");
-            exit(1);
+            exit(EXIT_FAILURE);
          }
          ez_unlink(CacheFname);
       }
@@ -474,7 +475,7 @@ LOGTYPE_addressCount(LOGTYPE *self)
 {
    /* We'll need a map in which to collect unique addresses */
    static MAP smap;
-   MAP_sinit(&smap, N_ADDRESSES_HINT/10, 10);
+   MAP_sinit(&smap, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
 
    /* Collect results for all LOGILE objects we own */
    MAP_visitAllEntries(&self->file_map, (int(*)(void*,void*))LOGFILE_map_addr, &smap);

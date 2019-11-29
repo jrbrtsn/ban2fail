@@ -16,6 +16,7 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -388,3 +389,71 @@ int _ez_unlink (
    }
    return rtn;
 }
+
+/***************************************************/
+int _ez_getaddrinfo(
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      const char *node,
+      const char *service,
+      const struct addrinfo *hints,
+      struct addrinfo **res
+      )
+{
+   errno= 0;
+   int rtn= getaddrinfo (node, service, hints, res);
+   switch(rtn) {
+      case 0:
+      case EAI_AGAIN:
+      case EAI_FAIL:
+#ifdef EAI_NODATA
+      case EAI_NODATA:
+#endif
+         return rtn;
+
+      case EAI_SYSTEM:
+         _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "getaddrinfo(\"%s:%s\") failed", node, service);
+         abort();
+   }
+
+   /* _sys_eprintf() will pass errno to gai_sterror */
+   errno= rtn;
+   _sys_eprintf(gai_strerror, fileName, lineNo, funcName, "getaddrinfo(\"%s:%s\") failed", node, service);
+   abort();
+}
+
+/***************************************************/
+int _ez_getnameinfo(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      const struct sockaddr *addr,
+      socklen_t addrlen,
+      char *host,
+      socklen_t hostlen,
+      char *serv,
+      socklen_t servlen,
+      int flags
+      )
+{
+   errno= 0;
+   int rtn= getnameinfo (addr, addrlen, host, hostlen, serv, servlen, flags);
+   switch(rtn) {
+      case 0:
+      case EAI_AGAIN:
+      case EAI_FAIL:
+      case EAI_NONAME:
+         return rtn;
+
+      case EAI_SYSTEM:
+         _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "getnameinfo() failed");
+         abort();
+   }
+
+   /* _sys_eprintf() will pass errno to gai_sterror */
+   errno= rtn;
+   _sys_eprintf(gai_strerror, fileName, lineNo, funcName, "getnameinfo() failed", rtn);
+   abort();
+}
+

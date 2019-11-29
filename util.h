@@ -145,9 +145,15 @@ void _sys_eprintf(
 struct timespec;
 
 int64_t
-timespec_ms(const struct timespec *ts);
+timespec2ms(const struct timespec *ts);
 /**********************************************************************
  * Convert a timespec structure to integer milliseconds.
+ */ 
+
+struct timespec*
+ms2timespec(struct timespec *rtnBuf, int64_t ms);
+/**********************************************************************
+ * Load up a timespec struct given number of milliseconds.
  */ 
 
 int64_t

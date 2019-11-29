@@ -36,7 +36,7 @@ initialize(void)
 {
    S.is_init= 1;
    MAP_constructor(&S.cntry_map, 10, 10);
-   MAP_constructor(&S.addr_map, N_ADDRESSES_HINT/10, 10);
+   MAP_constructor(&S.addr_map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
 }
 
 // Compiler doesn't like that we use integers in place of item pointers */

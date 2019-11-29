@@ -37,6 +37,7 @@
 
 /* For sizing maps and vectors, this a starting point */
 #define N_ADDRESSES_HINT 10000
+#define BUCKET_DEPTH_HINT 10
 
 /* Where to find stuff */
 #define CONFIGFILE "/etc/ban2fail/ban2fail.cfg"

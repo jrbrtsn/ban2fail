@@ -16,6 +16,7 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
+#define _GNU_SOURCE
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,7 +45,7 @@ initialize (void)
 {
    S.is_init= 1;
 
-   MAP_constructor(&S.addr_map, N_ADDRESSES_HINT/10, 10);
+   MAP_constructor(&S.addr_map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
 
    const static struct ipv {
       const char *cmd,
@@ -71,7 +72,7 @@ initialize (void)
 
       if(regex_compile(&re, ipv->pattern, REG_EXTENDED)) {   
          eprintf("ERROR: regex_compile(\"%s\") failed.", ipv->pattern);
-         exit(1);
+         exit(EXIT_FAILURE);
       }   
          
       fh= ez_popen(ipv->cmd, "r");
