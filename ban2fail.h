@@ -35,6 +35,9 @@
  */
 #define IPTABLES_BATCH_SZ 100
 
+/* For sizing maps and vectors, this a starting point */
+#define N_ADDRESSES_HINT 10000
+
 /* Where to find stuff */
 #define CONFIGFILE "/etc/ban2fail/ban2fail.cfg"
 #define LOCKPATH "/run/lock/ban2fail"

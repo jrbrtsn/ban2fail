@@ -44,7 +44,7 @@ initialize (void)
 {
    S.is_init= 1;
 
-   MAP_constructor(&S.addr_map, 1000, 200);
+   MAP_constructor(&S.addr_map, N_ADDRESSES_HINT/10, 10);
 
    const static struct ipv {
       const char *cmd,

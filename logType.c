@@ -192,7 +192,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          }
 
          if(G.flags & GLB_LONG_LISTING_FLG) {
-            ez_fprintf(G.listing_fh, "Scanning \"%s\" ...", log_fname);
+            ez_fprintf(G.listing_fh, "Scanning \"%s\"... ", log_fname);
             fflush(G.listing_fh);
          }
 
@@ -233,7 +233,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          LOGFILE_addressCount(f, &nAddrFound);
 
          if(G.flags & GLB_LONG_LISTING_FLG) {
-            ez_fprintf(G.listing_fh, " found %u offenses (%u addresses)\n", nOffFound, nAddrFound);
+            ez_fprintf(G.listing_fh, "found %u offenses (%u addresses)\n", nOffFound, nAddrFound);
             fflush(G.listing_fh);
          }
 
@@ -476,7 +476,7 @@ LOGTYPE_addressCount(LOGTYPE *self)
 {
    /* We'll need a map in which to collect unique addresses */
    static MAP smap;
-   MAP_sinit(&smap, 1000, 100);
+   MAP_sinit(&smap, N_ADDRESSES_HINT/10, 10);
 
    /* Collect results for all LOGILE objects we own */
    MAP_visitAllEntries(&self->file_map, (int(*)(void*,void*))LOGFILE_map_addr, &smap);

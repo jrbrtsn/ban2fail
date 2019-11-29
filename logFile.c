@@ -47,7 +47,7 @@ common_constructor(LOGFILE *self)
  */
 {
    memset(self, 0, sizeof(*self));
-   MAP_constructor(&self->addr2logEntry_map, 1000, 200);
+   MAP_constructor(&self->addr2logEntry_map, N_ADDRESSES_HINT/10, 10);
 }
 
 LOGFILE*

@@ -95,7 +95,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 11,
-      .patch= 7
+      .patch= 8
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -164,10 +164,10 @@ main(int argc, char **argv)
    MAP_constructor(&G.logType_map, 10, 10);
 
    // local
-   MAP_constructor(&S.addr2logEntry_map, 1000, 200);
+   MAP_constructor(&S.addr2logEntry_map, N_ADDRESSES_HINT/10, 10);
 
-   PTRVEC_constructor(&S.toBlock_vec, 100000);
-   PTRVEC_constructor(&S.toUnblock_vec, 100000);
+   PTRVEC_constructor(&S.toBlock_vec, N_ADDRESSES_HINT);
+   PTRVEC_constructor(&S.toUnblock_vec, N_ADDRESSES_HINT);
 
    { /*=== Parse command line arguments ===*/
       int c, errflg= 0;
@@ -377,7 +377,7 @@ main(int argc, char **argv)
 
       if(G.flags & GLB_LONG_LISTING_FLG) {
          MAP map;
-         MAP_constructor(&map, 1000, 100);
+         MAP_constructor(&map, N_ADDRESSES_HINT/10, 10);
 
          unsigned nOffFound= 0,
                   nAddrFound;
@@ -467,7 +467,7 @@ main(int argc, char **argv)
 
          /* Map for indexing cntryStat objects */
          static MAP byCntry_map;
-         MAP_sinit(&byCntry_map, 100, 100);
+         MAP_sinit(&byCntry_map, 100, 10);
 
          /* Build index by trawling existing by-address map */
          MAP_visitAllEntries(&S.addr2logEntry_map, (int(*)(void*,void*))map_byCountries, &byCntry_map);
