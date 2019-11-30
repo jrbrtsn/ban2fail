@@ -88,7 +88,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 12,
-      .patch= 2
+      .patch= 3
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -425,7 +425,7 @@ main(int argc, char **argv)
       /* Special processing for DNS lookups */
       if(G.flags & GLB_DNS_LOOKUP_FLG) {
 
-         ez_fprintf(G.listing_fh, "Performing reverse DNS lookups for up to %d seconds ...\n", DFLT_DNS_PAUSE_SEC);
+         ez_fprintf(G.listing_fh, "Performing DNS lookups for up to %d seconds ...\n", DFLT_DNS_PAUSE_SEC);
          fflush(G.listing_fh);
 
          int rc= PDNS_lookup(S.lePtrArr, nItems, DFLT_DNS_PAUSE_SEC*1000);
@@ -467,7 +467,6 @@ main(int argc, char **argv)
          /* Print out only for list option */
          if(G.flags & GLB_LIST_ADDR_FLG) {
 
-//            const static char *dns_fmt= "%-15s\t%5u/%-4d offenses %s (%s) %s%s %d\n",
             const static char *dns_fmt= "%-15s\t%5u/%-4d offenses %s (%s) %s%s\n",
                               *fmt= "%-15s\t%5u/%-4d offenses %s (%s)\n";
 

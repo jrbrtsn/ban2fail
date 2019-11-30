@@ -378,13 +378,11 @@ worker_check_inbox_f(void *vp_ndx, int signo)
    {
       assert(msg.e);
       int64_t ms= clock_gettime_ms(CLOCK_REALTIME) - S.start_ms;
-//eprintf("thread %u doing lookup at %f seconds", ndx, (double)ms/1000.);
 
       if(msg.e->dns.flags & PDNS_REV_DNS_FLG) {
 
          const static struct addrinfo hints= {
             .ai_family = AF_UNSPEC,    /* Allow IPv4 or IPv6 */
-//            .ai_flags = AI_CANONNAME /* get the forward lookup result */
          };
 
          /* Get a populated addrinfo object */
@@ -395,7 +393,6 @@ worker_check_inbox_f(void *vp_ndx, int signo)
 
          switch(rc) {
             case 0:
-//               assert(res && res->ai_canonname);
                break;
 
             case EAI_NONAME:
@@ -441,12 +438,12 @@ worker_check_inbox_f(void *vp_ndx, int signo)
                break;
 
             case EAI_NONAME:
-               msg.e->dns.name= "[3(NXDOMAIN)]";
+               msg.e->dns.name= "3(NXDOMAIN)";
                msg.e->dns.flags |= PDNS_NXDOMAIN_FLG;
                break;
 
             case EAI_AGAIN:
-               msg.e->dns.name= "[2(SERVFAIL)]";
+               msg.e->dns.name= "2(SERVFAIL)";
                msg.e->dns.flags |= PDNS_SERVFAIL_FLG;
                break;
 
