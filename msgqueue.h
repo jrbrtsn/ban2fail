@@ -99,6 +99,8 @@ MSGQUEUE_submitMsg (
  *
  * Returns: 0 for success, non-zero otherwise.
  */
+#define MSGQUEUE_submitTypedMsg(self, msg) \
+   MSGQUEUE_submitMsg(self, &(msg))
 
 int
 MSGQUEUE_extractMsg (
@@ -113,6 +115,9 @@ MSGQUEUE_extractMsg (
  *
  * Returns: 0 for success, EOF if the queue is empty.
  */
+#define MSGQUEUE_extractTypedMsg(self, msg) \
+   MSGQUEUE_extractMsg(self, &(msg))
+
 
 int
 MSGQUEUE_checkQueue (

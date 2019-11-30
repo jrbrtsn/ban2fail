@@ -276,7 +276,9 @@ regex_compile(regex_t *preg, const char *pattern, int cflags);
 FILE*
 pager_open(void);
 /***************************************************
- * open() the caller's $PAGER on tmpfile.
+ * popen() the caller's $PAGER. Calling pclose()
+ * will then wait for pager to finish, and subsequently
+ * close the stream.
  */
 
 const char*

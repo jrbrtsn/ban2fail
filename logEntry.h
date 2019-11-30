@@ -30,6 +30,7 @@ typedef struct _LOGENTRY {
    char addr[46],
         cntry[3];
    unsigned count;
+   char *dnsName;
 } LOGENTRY;
 
 #ifdef __cplusplus

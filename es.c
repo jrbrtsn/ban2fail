@@ -434,6 +434,8 @@ ES_registerVSignal (
  * On failure, -1 is returned.
  */ 
 {
+   if(TS.tid != pthread_self()) initialize();
+
    Cb *cb;
 
    if(!Cb_VSignalCreate(cb, signum, callback_f, ctxt)) assert(0);
@@ -849,7 +851,12 @@ ES_spawn_thread_sched(
   if(pthread_mutex_lock(&S.spawn.cond_mtx)) assert (0);
 
   /* Spawn the new thread */
+  memset(&tid, 0, sizeof(tid));
   rtn = pthread_create (&tid, &attr, user_main, arg);
+  if(rtn) {
+     sys_eprintf("ERROR: pthread_create()");
+     abort();
+  }
 
   /* Now we, the parent, wait on the child */
   while(!S.spawn.release_parent) {
@@ -934,16 +941,14 @@ ES_cleanup(void)
 int
 ES_VSignal (pthread_t tid, int signum)
 /**********************************************************************
- * Send a virtual signal to tid by placing signum in a mutex protected
- * message queue, and then call pthread_kill(tid, SIGHUP) to notify the thread.
+ * Send a virtual signal to tid, which is multiplexed on SIGUSR2.
  *
  * tid: Target thread identifier.
  * signum: Any integer number which is meaningful to your application.
  *
  * RETURNS:
  * 0:   successful
- * EOF: the message queue is full
- * -1:  All other failures.
+ * -1:  failures.
  */ 
 {
    int rtn= EOF-1;

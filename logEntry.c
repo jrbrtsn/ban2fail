@@ -94,6 +94,12 @@ LOGENTRY_destructor(LOGENTRY *self)
  * Free resources.
  */
 {
+   /* Sometimes this is assigned a static string,
+    * so just let it leak.
+    */
+//   if(self->dnsName)
+//      free(self->dnsName);
+
    return self;
 }
 

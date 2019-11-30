@@ -27,6 +27,7 @@ src := \
        map.c \
        maxoff.c \
        msgqueue.c \
+       pdns.c \
        ptrvec.c \
        str.c \
        util.c \

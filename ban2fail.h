@@ -39,6 +39,9 @@
 #define N_ADDRESSES_HINT 10000
 #define BUCKET_DEPTH_HINT 10
 
+/* How long to wait for reverse DNS lookups before bailing out */
+#define DFLT_DNS_PAUSE_SEC 180
+
 /* Where to find stuff */
 #define CONFIGFILE "/etc/ban2fail/ban2fail.cfg"
 #define LOCKPATH "/run/lock/ban2fail"

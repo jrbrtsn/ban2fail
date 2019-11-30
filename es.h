@@ -77,16 +77,14 @@ ES_registerVSignal (
 int
 ES_VSignal (pthread_t tid, int signum);
 /**********************************************************************
- * Send a virtual signal to tid by placing signum in a mutex protected
- * message queue, and then call pthread_kill(tid, SIGHUP) to notify the thread.
+ * Send a virtual signal to tid, which is multiplexed on SIGUSR2.
  *
  * tid: Target thread identifier.
  * signum: Any integer number which is meaningful to your application.
  *
  * RETURNS:
  * 0:   successful
- * EOF: the message queue is full
- * -1:  All other failures.
+ * -1:  failures.
  */ 
 
 int
