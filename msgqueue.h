@@ -22,7 +22,7 @@
 
 #include <pthread.h>
 
-typedef struct
+typedef struct _MSGQUEUE
 /*******************************
  * Necessary info for circular message
  * ring.
@@ -99,8 +99,22 @@ MSGQUEUE_submitMsg (
  *
  * Returns: 0 for success, non-zero otherwise.
  */
+#define ez_MSGQUEUE_submitMsg(self, msgBuf) \
+   _ez_MSGQUEUE_submitMsg(__FILE__, __LINE__, __FUNCTION__, self, msgBuf)
+int _ez_MSGQUEUE_submitMsg(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      MSGQUEUE *self,
+      const void *msgBuf
+      );
+
 #define MSGQUEUE_submitTypedMsg(self, msg) \
    MSGQUEUE_submitMsg(self, &(msg))
+
+#define ez_MSGQUEUE_submitTypedMsg(self, msg) \
+   ez_MSGQUEUE_submitMsg(self, &(msg))
+
 
 int
 MSGQUEUE_extractMsg (

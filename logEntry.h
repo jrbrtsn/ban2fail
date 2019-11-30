@@ -23,6 +23,7 @@
 #include <time.h>
 
 #include "map.h"
+#include "pdns.h"
 
 /* One of these for each offense found in a log file */
 typedef struct _LOGENTRY {
@@ -30,7 +31,14 @@ typedef struct _LOGENTRY {
    char addr[46],
         cntry[3];
    unsigned count;
-   char *dnsName;
+
+   /* This data populated by PDNS_lookup() */
+   struct {
+      enum PDNS_flags flags;
+      char *name;
+      int getaddrinfo_rtn;
+   } dns;
+   
 } LOGENTRY;
 
 #ifdef __cplusplus

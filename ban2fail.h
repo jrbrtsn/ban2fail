@@ -40,7 +40,11 @@
 #define BUCKET_DEPTH_HINT 10
 
 /* How long to wait for reverse DNS lookups before bailing out */
-#define DFLT_DNS_PAUSE_SEC 60
+#ifdef DEBUG
+#       define DFLT_DNS_PAUSE_SEC 10
+#else
+#       define DFLT_DNS_PAUSE_SEC 60
+#endif
 
 /* Where to find stuff */
 #define CONFIGFILE "/etc/ban2fail/ban2fail.cfg"

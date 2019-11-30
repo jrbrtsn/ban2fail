@@ -21,7 +21,11 @@ enum ES_type {
 
 #define NUMSIGS 30
 
-#define VSIG_QUEUE_MAX 100
+/* NOTE: if this queue becomes full, it
+ * can wreak havok on your mutlithreading
+ * logic!
+ */
+#define VSIG_QUEUE_MAX 1000
 
 /****************************************************
  * We get one of these anonymous structs per-process.
@@ -852,6 +856,9 @@ ES_spawn_thread_sched(
 
   /* Spawn the new thread */
   memset(&tid, 0, sizeof(tid));
+  /* JDR Sat 30 Nov 2019 10:39:04 AM EST
+   * it appears that this fails at 300 threads.
+   */
   rtn = pthread_create (&tid, &attr, user_main, arg);
   if(rtn) {
      sys_eprintf("ERROR: pthread_create()");
@@ -965,11 +972,7 @@ ES_VSignal (pthread_t tid, int signum)
    assert(tid == ts->tid);
 
    /* Place virtual signal in message queue */
-   int rc= MSGQUEUE_submitMsg(&ts->vsig.mq, &signum);
-   if(rc) {
-      rtn= EOF;
-      goto abort;
-   }
+   ez_MSGQUEUE_submitMsg(&ts->vsig.mq, &signum);
 
    /* And finally tell the target thread to check it's message queue */
    if(pthread_kill(tid, SIGUSR2)) {

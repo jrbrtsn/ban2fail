@@ -88,7 +88,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 12,
-      .patch= 1
+      .patch= 2
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -430,7 +430,7 @@ main(int argc, char **argv)
 
          int rc= PDNS_lookup(S.lePtrArr, nItems, DFLT_DNS_PAUSE_SEC*1000);
          assert(-1 != rc);
-         ez_fprintf(G.listing_fh, "\tCompleted %d of %u lookups\n", rc, nItems);
+         ez_fprintf(G.listing_fh, "\t==> Completed %d of %u lookups\n", rc, nItems);
       }
 
       /* Process each LOGENTRY item */
@@ -467,16 +467,25 @@ main(int argc, char **argv)
          /* Print out only for list option */
          if(G.flags & GLB_LIST_ADDR_FLG) {
 
-            const static char *dns_fmt= "%-15s\t%5u/%-4d offenses %s (%s) %s\n",
+//            const static char *dns_fmt= "%-15s\t%5u/%-4d offenses %s (%s) %s%s %d\n",
+            const static char *dns_fmt= "%-15s\t%5u/%-4d offenses %s (%s) %s%s\n",
                               *fmt= "%-15s\t%5u/%-4d offenses %s (%s)\n";
 
-            ez_fprintf(G.listing_fh, e->dnsName  ? dns_fmt : fmt
+            const char *failStat= "";
+            if(e->dns.flags & PDNS_FWD_FAIL_FLG)
+               failStat= " ~";
+            if(e->dns.flags & PDNS_FWD_NONE_FLG)
+               failStat= " *";
+
+            ez_fprintf(G.listing_fh, e->dns.name  ? dns_fmt : fmt
                   , e->addr
                   , e->count
                   , nAllowed
                   , e->cntry[0] ? e->cntry : "--"
                   , bits2str(flags, BlockBitTuples)
-                  , e->dnsName
+                  , e->dns.name
+                  , failStat
+                  , e->dns.getaddrinfo_rtn
                   );
          }
 

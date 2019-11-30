@@ -75,7 +75,7 @@ MSGQUEUE_submitMsg (MSGQUEUE * self, const void *msgBuf)
       eprintf("WARNING: %p queue full.", self);
 #endif
       rtn = EOF;
-      goto done;
+      goto abort;
     }
 
   /* If this is not the first item to be added */
@@ -84,9 +84,9 @@ MSGQUEUE_submitMsg (MSGQUEUE * self, const void *msgBuf)
 
   memcpy (self->buff_ptr + self->tail * self->msgSize, msgBuf, self->msgSize);
 
-  self->numItems++;
+  ++self->numItems;
 
-done:
+abort:
   if (pthread_mutex_unlock (&self->mtx))
     assert (0);
   return rtn;
@@ -105,7 +105,7 @@ MSGQUEUE_extractMsg (MSGQUEUE * self, void *msgBuf)
   if (!self->numItems)
     {
       rtn = EOF;
-      goto done;
+      goto abort;
     }
 
   self->numItems--;
@@ -114,7 +114,7 @@ MSGQUEUE_extractMsg (MSGQUEUE * self, void *msgBuf)
   if (self->numItems)
     self->head = (self->head + 1) % self->maxItems;
 
-done:
+abort:
   if (pthread_mutex_unlock (&self->mtx))
     assert (0);
   return rtn;
@@ -139,19 +139,36 @@ MSGQUEUE_checkQueue (MSGQUEUE * self,
     assert (0);
 
   if (!self->numItems)
-    goto done;
+    goto abort;
 
   for (i = 0, ptr = self->buff_ptr + self->head * self->msgSize;
        i < self->numItems;
-       i++, ptr =
+       ++i, ptr =
        self->buff_ptr + ((self->head + i) % self->maxItems) * self->msgSize)
     {
       if ((rtn = (*check) (ptr, arg)))
 	break;
     }
 
-done:
+abort:
   if (pthread_mutex_unlock (&self->mtx))
     assert (0);
   return rtn;
+}
+
+/************************************************************/
+int _ez_MSGQUEUE_submitMsg(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      MSGQUEUE *self,
+      const void *msgBuf
+      )
+{
+   int rtn= MSGQUEUE_submitMsg (self, msgBuf);
+
+   if(!rtn) return 0;
+
+   _eprintf(fileName, lineNo, funcName, "MSGQUEUE_submitMsg() failed");
+   abort();
 }

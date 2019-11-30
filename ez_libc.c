@@ -407,9 +407,8 @@ int _ez_getaddrinfo(
       case 0:
       case EAI_AGAIN:
       case EAI_FAIL:
-#ifdef EAI_NODATA
       case EAI_NODATA:
-#endif
+      case EAI_NONAME:
          return rtn;
 
       case EAI_SYSTEM:

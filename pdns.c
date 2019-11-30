@@ -17,13 +17,7 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-/*
- * JDR Sat 30 Nov 2019 08:27:23 AM EST
- * Performs DNS reverse lookups in parallel. Having to use a bunch of threads
- * to overcome serialization inherent in a blocking call is a travesty, but I
- * couldn't find a non-blocking version of getnameinfo().
- */
-
+#define _GNU_SOURCE
 #include <assert.h>
 #include <limits.h>
 #include <signal.h>
@@ -35,21 +29,37 @@
 #include "util.h"
 
 enum vsignals {
-   /* All vsigs before this are used to indicate child ready to join */
+   /* All vsigs before this are used to indicate worker ready to join */
    EXIT_VSIG=           PDNS_MAX_THREADS,
    CHECK_INBOX_VSIG
+};
+
+enum lookupType {
+   FWD_LOOKUP,
+   REV_LOOKUP
+};
+
+/* Messages in the mgr inbox look like this */
+struct mgrMsg {
+   LOGENTRY *e;
+   unsigned worker_ndx;
+};
+
+/* Messages in the worker inbox look like this */
+struct workerMsg {
+   LOGENTRY *e;
 };
 
 
 /*============================================================*/
 /*=========== Forward declarations ===========================*/
 /*============================================================*/
-static int check_inbox_f(void *data, int signo);
-static int child_check_inbox_f(void *vp_ndx, int signo);
-static void* child_main (void *data);
-static int child_exit_f(void *data, int signo);
+static int mgr_check_inbox_f(void *data, int signo);
+static int worker_check_inbox_f(void *vp_ndx, int signo);
+static void* worker_main (void *data);
+static int worker_exit_f(void *data, int signo);
 static int join_f(void *data, int signo);
-static void stop_remaining_children(void);
+static void stop_remaining_workers(void);
 static int timeout_f(void *data);
 static int shutdown_f(void *data);
 static unsigned nThreads_joined(void);
@@ -60,7 +70,8 @@ static unsigned nThreads_joined(void);
 static struct {
 
    enum {
-      EXIT_FLG= 1<<0
+      EXIT_FLG= 1<<0,
+      ORPHAN_FLG= 1<<1
    } flags;
 
    int64_t start_ms;
@@ -73,21 +84,19 @@ static struct {
    pthread_t tid;
    MSGQUEUE inbox;
    LOGENTRY **lePtrArr;
-   unsigned ndx,
+   unsigned processedNdx,
             nThreads,
             nItems;
 
-   unsigned nCompleted;
-
-   /* One of these for each child thread */
-   struct child {
+   /* One of these for each worker thread */
+   struct worker {
 
       int is_joined;
 
       pthread_t tid;
       MSGQUEUE inbox;
 
-   } childArr[PDNS_MAX_THREADS];
+   } workerArr[PDNS_MAX_THREADS];
    
 } S;
 
@@ -103,7 +112,7 @@ PDNS_lookup(LOGENTRY *lePtrArr[], unsigned nItems, unsigned timeout_ms)
 {
    int rtn= -1;
 
-   /* Check for nothing-to-do case */
+   /* Check for trivial case */
    if(!nItems)
       return 0;
 
@@ -114,7 +123,7 @@ PDNS_lookup(LOGENTRY *lePtrArr[], unsigned nItems, unsigned timeout_ms)
    S.tid= pthread_self();
 
    /* Prepare our inbox */
-   MSGQUEUE_constructor(&S.inbox, sizeof(unsigned), PDNS_INBOX_SZ);
+   MSGQUEUE_constructor(&S.inbox, sizeof(struct mgrMsg), PDNS_MGR_INBOX_SZ);
 
    /* Stash this where it's easy to get to */
    S.nItems= nItems;
@@ -124,36 +133,35 @@ PDNS_lookup(LOGENTRY *lePtrArr[], unsigned nItems, unsigned timeout_ms)
    /* Register a countdown timer to know when to stop */
    S.timeoutKey= ez_ES_registerTimer(timeout_ms, 0, timeout_f, NULL);
    /* Check inbox on CHECK_INBOX_VSIG */
-   S.inboxKey= ez_ES_registerVSignal(CHECK_INBOX_VSIG, check_inbox_f, NULL);
+   S.inboxKey= ez_ES_registerVSignal(CHECK_INBOX_VSIG, mgr_check_inbox_f, NULL);
 
-   /* Start child threads */
+   /* Start worker threads */
    for(unsigned i= 0; i < S.nThreads; ++i) {
 
-      struct child *ch= S.childArr + i;
+      struct worker *wrk= S.workerArr + i;
 
       /* Register the join handler on vsig= array index */
       S.joinKeyArr[i]= ez_ES_registerVSignal(i, join_f, NULL);
 
-      /* Pass the child's array index in to child_main() */
-      ch->tid= ES_spawn_thread(child_main, (void*)(long unsigned)i);
+      /* Pass the worker's array index in to worker_main() */
+      wrk->tid= ES_spawn_thread(worker_main, (void*)(long unsigned)i);
    }
 
-   /* Give child threads something to do */
-   for(; S.ndx < S.nThreads; ++S.ndx) {
+   /* Give worker threads something to do */
+   for(; S.processedNdx < S.nThreads; ++S.processedNdx) {
 
-      struct child *ch= S.childArr + S.ndx;
+      struct worker *wrk= S.workerArr + S.processedNdx;
+      struct workerMsg worker_msg= {.e= S.lePtrArr[S.processedNdx]};
 
-      /* Give the child something to do */
-      int rc= MSGQUEUE_submitTypedMsg(&ch->inbox, S.lePtrArr[S.ndx]);
-      assert(0 == rc);
-      /* Prompt child to check inbox */
-      ES_VSignal(ch->tid, CHECK_INBOX_VSIG);
+      /* Give the worker something to do */
+      ez_MSGQUEUE_submitTypedMsg(&wrk->inbox, worker_msg);
+      /* Prompt worker to check inbox */
+      ES_VSignal(wrk->tid, CHECK_INBOX_VSIG);
 
    }
 
    /* Wait for something to happen */
    ES_run();
-//eprintf("------------ ALL THREADS TERMINATED ------------");
 
    /* Unregister signal handlers for this thread */
    if(S.timeoutKey)
@@ -169,40 +177,49 @@ PDNS_lookup(LOGENTRY *lePtrArr[], unsigned nItems, unsigned timeout_ms)
       ez_ES_unregister(S.joinKeyArr[i]);
    }
 
-   rtn= S.nCompleted;
+   rtn= S.processedNdx;
 abort:
    return rtn;
 }
 
 static int
-check_inbox_f(void *data, int signo)
+mgr_check_inbox_f(void *data, int signo)
 /*********************************************************
  * Parent was prompted to check the inbox to see which
- * child is ready for another task.
+ * worker is ready for another task.
  */
 {
    int rtn= -1;
-   unsigned child_ndx;
+   struct mgrMsg msg;
 
-   while(EOF != MSGQUEUE_extractTypedMsg(&S.inbox, child_ndx)) {
+   while(EOF != MSGQUEUE_extractTypedMsg(&S.inbox, msg)) {
 
-      /* Get pointer to child */
-      struct child *ch= S.childArr + child_ndx;
+      /* Get pointer to worker */
+      struct worker *wrk= S.workerArr + msg.worker_ndx;
+      struct workerMsg worker_msg= {.e= NULL};
 
-      /* Noting left to do here */
-      if(S.ndx == S.nItems) {
-//eprintf("Killing thread %u early", child_ndx);
-         pthread_kill(ch->tid, SIGTERM);
-         continue;
+      if(msg.e->dns.flags & PDNS_DONE_MASK) {
+
+         /* If we've finished up, start pruning worker threads */
+         if(S.processedNdx == S.nItems) {
+            pthread_kill(wrk->tid, SIGTERM);
+            continue;
+         }
+
+         worker_msg.e= S.lePtrArr[S.processedNdx];
+         ++S.processedNdx;
+
+      } else {
+
+          /* Perform forward lookup next */
+          worker_msg.e= msg.e;
+
       }
 
-      /* Tell child to work on next task */
-      int rc= MSGQUEUE_submitTypedMsg(&ch->inbox, S.lePtrArr[S.ndx]);
-      assert(0 == rc);
-      ES_VSignal(ch->tid, CHECK_INBOX_VSIG);
+      /* Give worker another task */
+      ez_MSGQUEUE_submitTypedMsg(&wrk->inbox, worker_msg);
+      ES_VSignal(wrk->tid, CHECK_INBOX_VSIG);
 
-      /* Move the "todo" ndx forward */
-      ++S.ndx;
    }
 
    rtn= 0;
@@ -219,8 +236,8 @@ nThreads_joined(void)
    unsigned rtn= 0;
    for(unsigned i= 0; i < S.nThreads; ++i) {
 
-      struct child *ch= S.childArr + i;
-      if(!ch->is_joined) continue;
+      struct worker *wrk= S.workerArr + i;
+      if(!wrk->is_joined) continue;
       ++rtn;
    }
 
@@ -230,39 +247,37 @@ nThreads_joined(void)
 static int
 join_f(void *data, int signo)
 /*********************************************************
- * Child prompted us to join
+ * Worker prompted us to join
  */
 {
-   struct child *ch= S.childArr + signo;
+   struct worker *wrk= S.workerArr + signo;
    void *pRtn;
 
-//eprintf("joining thread %d", signo);
+   pthread_join(wrk->tid, &pRtn);
 
-   pthread_join(ch->tid, &pRtn);
-
-   ch->is_joined= 1;
+   wrk->is_joined= 1;
 
    /* This will naturally terminate when we are done.*/
    return S.nThreads == nThreads_joined() ? -1 : 0;
 }
 
 static void
-stop_remaining_children(void)
+stop_remaining_workers(void)
 /*********************************************************
- * Signal any remaining children to stop.
+ * Signal any remaining workers to stop.
  */
 {
-   /* Tell all remaining child threads to exit now */
+   /* Tell all remaining worker threads to exit now */
    unsigned i;
    for(i= 0; i < S.nThreads; ++i) {
 
-      struct child *ch= S.childArr + i;
+      struct worker *wrk= S.workerArr + i;
 
       /* If it has already joined, skip it */
-      if(ch->is_joined) continue;
+      if(wrk->is_joined) continue;
 
-      /* Prompt child to shut down now */
-      pthread_kill(ch->tid, SIGTERM);
+      /* Prompt worker to shut down now */
+      pthread_kill(wrk->tid, SIGTERM);
    }
 }
 
@@ -278,11 +293,11 @@ timeout_f(void *data)
    /* Post notice that it is time to shut down */
    S.flags |= EXIT_FLG;
 
-eprintf("Timed out with %u threads remaining", S.nThreads - nThreads_joined());
+#ifdef DEBUG
+   eprintf("Timed out with %u threads remaining", S.nThreads - nThreads_joined());
+#endif
 
-//eprintf("EXTERMINATE!!!!");
-
-   stop_remaining_children();
+   stop_remaining_workers();
 
    /* Register a countdown timer to know when to forcefully
     * stop remaining threads.
@@ -299,115 +314,175 @@ shutdown_f(void *data)
  */
 {
    S.shutdownKey= 0;
-eprintf("WTF? %u threads _still_ remain", S.nThreads - nThreads_joined());
+#ifdef DEBUG
+   eprintf("WTF: %u threads *still* remain!", S.nThreads - nThreads_joined());
+#endif
+   /* Let workerren know not to signal for a join */
+   S.flags |= ORPHAN_FLG;
    return -1;
 }
 
 /*============================================================*/
-/*================= Child threads ============================*/
+/*================= Worker threads ============================*/
 /*============================================================*/
 
 static void*
-child_main (void *vp_ndx)
+worker_main (void *vp_ndx)
 /*********************************************************
- * Children begin execution here.
+ * Workers begin execution here.
  */
 {
    unsigned ndx= (long unsigned)vp_ndx;
-   struct child *self= S.childArr + ndx;
+   struct worker *self= S.workerArr + ndx;
 
-   /* Prepare child's static data */
-   MSGQUEUE_constructor(&self->inbox, sizeof(LOGENTRY*), PDNS_CHILD_INBOX_SZ);
+   /* Prepare worker's static data */
+   MSGQUEUE_constructor(&self->inbox, sizeof(struct workerMsg), PDNS_WORKER_INBOX_SZ);
 
    /* Register to exit when prompted */
-   ez_ES_registerSignal(SIGTERM, child_exit_f, NULL);
+   ez_ES_registerSignal(SIGTERM, worker_exit_f, NULL);
 
    /* Register to check inbox when prompted */
-   ez_ES_registerVSignal(CHECK_INBOX_VSIG, child_check_inbox_f, vp_ndx);
+   ez_ES_registerVSignal(CHECK_INBOX_VSIG, worker_check_inbox_f, vp_ndx);
 
    /* Parent has been blocked waiting for this call */
    ES_release_parent();
 
-   /* Respond to directives from parent */
+   /* Respond to directives from mgr */
    ES_run();
-   int64_t ms= clock_gettime_ms(CLOCK_REALTIME) - S.start_ms;
+#ifdef qqDEBUG
+int64_t ms= clock_gettime_ms(CLOCK_REALTIME) - S.start_ms;
+eprintf("thread %u exiting at %f seconds", ndx, (double)ms/1000.);
+#endif
 
-//eprintf("thread %u exiting at %f seconds", ndx, (double)ms/1000.);
-
-   /* Let the main thread know we are ready to join */
-   ES_VSignal(S.tid, ndx);
+   /* Parent thread may have moved on. In that case, don't join. */
+   if(!(S.flags & ORPHAN_FLG))
+      /* Let the main thread know we are ready to join */
+      ES_VSignal(S.tid, ndx);
 
    return NULL;
 }
 
 static int
-child_check_inbox_f(void *vp_ndx, int signo)
+worker_check_inbox_f(void *vp_ndx, int signo)
 /*********************************************************
- * Child was prompted to check the inbox for tasks.
+ * Worker was prompted to check the inbox for tasks.
  */
 {
    int rtn= -1;
    unsigned ndx= (long unsigned)vp_ndx;
-   struct child *self= S.childArr + ndx;
-   char hostBuf[PATH_MAX];
-   LOGENTRY *e;
-   const static struct addrinfo hints= {
-      .ai_family = AF_UNSPEC,    /* Allow IPv4 or IPv6 */
-      .ai_flags = AI_NUMERICHOST /* doing reverse lookups */
-   };
+   struct worker *self= S.workerArr + ndx;
+   struct workerMsg msg;
 
    while(!(S.flags & EXIT_FLG) &&
-         EOF != MSGQUEUE_extractTypedMsg(&self->inbox, e))
+         EOF != MSGQUEUE_extractTypedMsg(&self->inbox, msg))
    {
-      assert(e);
+      assert(msg.e);
       int64_t ms= clock_gettime_ms(CLOCK_REALTIME) - S.start_ms;
 //eprintf("thread %u doing lookup at %f seconds", ndx, (double)ms/1000.);
-      /* Get a populated addrinfo object */
-      struct addrinfo *res= NULL;
-      int rc= ez_getaddrinfo(e->addr, NULL, &hints, &res);
-      assert(0 == rc);
-      assert(res && res->ai_addr && res->ai_addrlen);
-      /* Now do blocking reverse lookup */
-      rc= ez_getnameinfo(res->ai_addr, res->ai_addrlen, hostBuf, sizeof(hostBuf)-1, NULL, 0, NI_NAMEREQD);
-      switch(rc) {
-         case 0:
-            e->dnsName= strdup(hostBuf);
-            break;
 
-         case EAI_NONAME:
-            e->dnsName= "[3(NXDOMAIN)]";
-            break;
+      if(msg.e->dns.flags & PDNS_REV_DNS_FLG) {
 
-         case EAI_AGAIN:
-            e->dnsName= "[2(SERVFAIL)]";
-            break;
+         const static struct addrinfo hints= {
+            .ai_family = AF_UNSPEC,    /* Allow IPv4 or IPv6 */
+//            .ai_flags = AI_CANONNAME /* get the forward lookup result */
+         };
 
-         default:
-            eprintf("FATAL: getnameinfo() returned %d", rc);
-            abort();
+         /* Get a populated addrinfo object */
+         struct addrinfo *res= NULL;
+         int rc= ez_getaddrinfo(msg.e->dns.name, NULL, &hints, &res);
+
+         msg.e->dns.getaddrinfo_rtn= rc;
+
+         switch(rc) {
+            case 0:
+//               assert(res && res->ai_canonname);
+               break;
+
+            case EAI_NONAME:
+               msg.e->dns.flags |= PDNS_FWD_NONE_FLG;
+               break;
+
+            case EAI_FAIL:
+            case EAI_NODATA:
+            case EAI_AGAIN:
+               msg.e->dns.flags |= PDNS_FWD_FAIL_FLG;
+               break;
+
+            default:
+               eprintf("rc= %d", rc);
+               assert(0);
+
+         }
+
+         /* In any case, we are done */
+         msg.e->dns.flags |= PDNS_FWD_DNS_FLG;
+
+      } else { /* reverse lookup */
+
+         const static struct addrinfo hints= {
+            .ai_family = AF_UNSPEC,    /* Allow IPv4 or IPv6 */
+            .ai_flags = AI_NUMERICHOST /* doing reverse lookups */
+         };
+
+         /* Place to which getnameinfo can copy result */
+         char hostBuf[PATH_MAX];
+
+         /* Get a populated addrinfo object */
+         struct addrinfo *res= NULL;
+         int rc= ez_getaddrinfo(msg.e->addr, NULL, &hints, &res);
+         assert(0 == rc);
+         assert(res && res->ai_addr && res->ai_addrlen);
+         /* Now do blocking reverse lookup */
+         rc= ez_getnameinfo(res->ai_addr, res->ai_addrlen, hostBuf, sizeof(hostBuf)-1, NULL, 0, NI_NAMEREQD);
+         switch(rc) {
+            case 0:
+               msg.e->dns.name= strdup(hostBuf);
+               msg.e->dns.flags |= PDNS_REV_DNS_FLG;
+               break;
+
+            case EAI_NONAME:
+               msg.e->dns.name= "[3(NXDOMAIN)]";
+               msg.e->dns.flags |= PDNS_NXDOMAIN_FLG;
+               break;
+
+            case EAI_AGAIN:
+               msg.e->dns.name= "[2(SERVFAIL)]";
+               msg.e->dns.flags |= PDNS_SERVFAIL_FLG;
+               break;
+
+            default:
+               eprintf("FATAL: getnameinfo() returned %d", rc);
+               abort();
+         }
       }
+
+      /* Catch being bumped out of blocking call by signal */
+      if(S.flags & EXIT_FLG) break;
    }
-   ++S.nCompleted;
 
-   if(S.flags & EXIT_FLG) return -1;
+   /* Only do follow up if we are not exiting */
+   if(!(S.flags & EXIT_FLG)) {
 
-   /* Submit the child's array ndx to main parent
-    * thread's inbox to indicate we are ready for
-    * more.
-    */
-   MSGQUEUE_submitTypedMsg(&S.inbox, ndx);
-   ES_VSignal(S.tid, CHECK_INBOX_VSIG);
+      struct mgrMsg mgr_msg= {.e= msg.e, .worker_ndx= ndx};
+      /* Submit the worker's message to main mgr
+       * thread's inbox to indicate we are ready for
+       * more.
+       */
+      ez_MSGQUEUE_submitTypedMsg(&S.inbox, mgr_msg);
+      ES_VSignal(S.tid, CHECK_INBOX_VSIG);
 
-   rtn= 0;
+      rtn= 0;
+   }
+
 abort:
    return rtn;
 }
 
 static int
-child_exit_f(void *vp_ndx, int signo)
-/*********************************************************
- * Child was prompted to exit now, so return -1 so child_main()
- * will return from ES_run().
+worker_exit_f(void *vp_ndx, int signo)
+/**************************************************************************
+ * Worker was prompted to exit now, so return -1 causing worker_main() return
+ * from ES_run().
  */
 {
    return -1;
