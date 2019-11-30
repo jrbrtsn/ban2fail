@@ -26,15 +26,24 @@ extern "C" {
 #endif
 
 /* Number of threads to use in parallel */
-#define PDNS_N_THREADS 160
-#define PDNS_INBOX_SZ 200
-#define PDNS_CHILD_INBOX_SZ 2
+#define PDNS_MAX_THREADS 100
+#define PDNS_INBOX_SZ (PDNS_MAX_THREADS*3)
+#define PDNS_CHILD_INBOX_SZ 1
+#define PDNS_SHUTDOWN_PAUSE_MS 500
 
 int
-PDNS_lookup(LOGENTRY *leArr[], unsigned nItems, unsigned timeout_ms);
+PDNS_lookup(LOGENTRY *lePtrArr[], unsigned nItems, unsigned timeout_ms);
 /**************************************************************
  * Perform parallel DNS reverse lookups on all LOGENTRY objects
- * referenced in leArr until finished, or timeout_ms has lapsed.
+ * referenced in lePtrArr until finished, or timeout_ms has lapsed.
+ *
+ * lePtrArr:   array of pointers to LOGENTRY objects
+ * nItems:  length of array
+ * timeout_ms: maximum amount of time to spend performing lookups.
+ *
+ * RETURNS
+ * suceess - number of lookups completed
+ * -1    Failures
  */
 
 #ifdef __cplusplus

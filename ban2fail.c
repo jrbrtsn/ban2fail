@@ -88,7 +88,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 12,
-      .patch= 0
+      .patch= 1
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -425,13 +425,12 @@ main(int argc, char **argv)
       /* Special processing for DNS lookups */
       if(G.flags & GLB_DNS_LOOKUP_FLG) {
 
-         ez_fprintf(G.listing_fh, "Performing reverse lookups for a %d seconds ... ", DFLT_DNS_PAUSE_SEC);
+         ez_fprintf(G.listing_fh, "Performing reverse DNS lookups for up to %d seconds ...\n", DFLT_DNS_PAUSE_SEC);
          fflush(G.listing_fh);
 
          int rc= PDNS_lookup(S.lePtrArr, nItems, DFLT_DNS_PAUSE_SEC*1000);
-         const char *msg= "done";
-         if(rc) msg= "out of time";
-         ez_fprintf(G.listing_fh, "%s\n", msg);
+         assert(-1 != rc);
+         ez_fprintf(G.listing_fh, "\tCompleted %d of %u lookups\n", rc, nItems);
       }
 
       /* Process each LOGENTRY item */

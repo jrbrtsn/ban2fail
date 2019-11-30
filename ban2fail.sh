@@ -48,7 +48,7 @@ while true; do
       esac
 
 # Uncomment this to see the inotifywait output which triggered this cycle
-echo "FILE= '$FILE', OPS= '$OPS'"
+#echo "FILE= '$FILE', OPS= '$OPS'"
 
       NOW_NS=$(date +%s%N)
       (( SINCE_NS = NOW_NS - RAN_NS ))
@@ -80,7 +80,7 @@ echo "FILE= '$FILE', OPS= '$OPS'"
       RAN_NS=$(date +%s%N)
       $TIME $BAN2FAIL || break
 
-   done < <(exec $INOTIFYWAIT -m $MON_FNAMES)
+   done < <($INOTIFYWAIT -m $MON_FNAMES)
 
    echo 'Exiting main loop'
    # Pause to let things settle down
