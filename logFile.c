@@ -27,7 +27,7 @@
 #include <string.h>
 
 #include "cntry.h"
-#include "logEntry.h"
+#include "offEntry.h"
 #include "logFile.h"
 #include "ez_libc.h"
 #include "ez_libz.h"

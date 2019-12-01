@@ -28,7 +28,7 @@
 #include "ez_libanl.h"
 #include "ez_libc.h"
 #include "iptables.h"
-#include "logEntry.h"
+#include "offEntry.h"
 #include "logFile.h"
 #include "logType.h"
 #include "map.h"

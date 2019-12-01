@@ -26,7 +26,7 @@
 #include "ban2fail.h"
 #include "ez_libc.h"
 #include "iptables.h"
-#include "logEntry.h"
+#include "offEntry.h"
 #include "map.h"
 #include "util.h"
 

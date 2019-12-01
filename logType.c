@@ -28,7 +28,7 @@
 #include <unistd.h>
 
 #include "ban2fail.h"
-#include "logEntry.h"
+#include "offEntry.h"
 #include "logFile.h"
 #include "logType.h"
 #include "ez_libc.h"

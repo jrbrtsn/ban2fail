@@ -21,11 +21,11 @@ src := \
        ez_libz.c \
        iptables.c \
        logType.c \
-       logEntry.c \
        logFile.c \
        map.c \
        maxoff.c \
        msgqueue.c \
+       offEntry.c \
        pdns.c \
        ptrvec.c \
        str.c \

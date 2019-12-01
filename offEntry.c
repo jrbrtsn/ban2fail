@@ -26,7 +26,7 @@
 #include "cntry.h"
 #include "ez_libc.h"
 #include "map.h"
-#include "logEntry.h"
+#include "offEntry.h"
 #include "util.h"
 
 /********************************************************/

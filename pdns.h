@@ -55,7 +55,7 @@ enum PDNS_flags {
 };
 
 #define _GNU_SOURCE
-#include "logEntry.h"
+#include "offEntry.h"
 
 #ifdef __cplusplus
 extern "C" {
