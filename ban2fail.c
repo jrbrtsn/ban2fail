@@ -64,7 +64,6 @@ struct initInfo {
 
 static int cntryStat_count_qsort(const void *p1, const void *p2);
 static int configure(CFGMAP *h_cfgmap, const char *pfix);
-static const char* reverse_dns_lookup(const char *addr);
 static int logentry_count_qsort(const void *p1, const void *p2);
 static int map_byCountries(LOGENTRY *e, MAP *h_map);
 static int stub_init(CFGMAP *map, char *symStr);
@@ -88,7 +87,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 12,
-      .patch= 3
+      .patch= 4
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -689,35 +688,4 @@ map_byCountries(LOGENTRY *e, MAP *h_map)
    ++cs->nAddr;
 
    return 0;
-}
-
-static const char*
-reverse_dns_lookup(const char *addr)
-/**************************************************************
- * Do a getaddrinfo() reverse lookup on addr
- */
-{
-   const char *rtn= NULL;
-   static char hostBuf[PATH_MAX];
-   static struct addrinfo hints,
-                          *res;
-   memset(&hints, 0, sizeof(hints));
-   res= NULL;
-
-   hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
-   hints.ai_flags = AI_NUMERICHOST; /* Only doing reverse lookups */
-
-   int rc= ez_getaddrinfo(addr, NULL, &hints, &res);
-   assert(0 == rc);
-
-   assert(res && res->ai_addr && res->ai_addrlen);
-
-   rc= ez_getnameinfo(res->ai_addr, res->ai_addrlen, hostBuf, sizeof(hostBuf)-1, NULL, 0, NI_NAMEREQD);
-   if(rc) return NULL;
-
-   rtn= hostBuf;
-
-abort:
-   if(res) freeaddrinfo(res);
-   return rtn;
 }

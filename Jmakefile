@@ -17,7 +17,6 @@ src := \
        cntry.c \
        es.c \
        ez_es.c \
-       ez_libanl.c \
        ez_libc.c \
        ez_libz.c \
        iptables.c \
@@ -32,7 +31,7 @@ src := \
        str.c \
        util.c \
 
-   libs := anl z crypto GeoIP pthread
+   libs := z crypto GeoIP pthread
 endif
 
 ########################################
