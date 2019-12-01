@@ -58,22 +58,22 @@ struct workerMsg {
 static const char* addrinfo2addr(const struct addrinfo *ai);
 static int addrinfo_is_match(const struct addrinfo *ai, const char *addr);
 static int mgr_check_inbox_f(void *data, int signo);
+static int join_f(void *data, int signo);
+static unsigned nThreads_joined(void);
+static int print_addrinfo(struct addrinfo *ai, FILE *fh);
+static int shutdown_f(void *data);
+static void stop_remaining_workers(void);
+static int timeout_f(void *data);
 static int worker_check_inbox_f(void *vp_ndx, int signo);
 static void* worker_main (void *data);
 static int worker_exit_f(void *data, int signo);
-static int join_f(void *data, int signo);
-static int print_addrinfo(struct addrinfo *ai, FILE *fh);
-static void stop_remaining_workers(void);
-static int timeout_f(void *data);
-static int shutdown_f(void *data);
-static unsigned nThreads_joined(void);
 
 /*============================================================*/
 /*=========== Static data ====================================*/
 /*============================================================*/
 static struct {
 
-   enum {
+   volatile enum {
       EXIT_FLG= 1<<0,
       ORPHAN_FLG= 1<<1
    } flags;
@@ -95,7 +95,7 @@ static struct {
    /* One of these for each worker thread */
    struct worker {
 
-      int is_joined;
+      volatile int is_joined;
 
       pthread_t tid;
       MSGQUEUE inbox;
@@ -195,9 +195,9 @@ abort:
 
 static int
 mgr_check_inbox_f(void *data, int signo)
-/*********************************************************
- * Parent was prompted to check the inbox to see which
- * worker is ready for another task.
+/**************************************************************************
+ * Manager was prompted by a worker to check the inbox and see which worker is
+ * ready for another task.
  */
 {
    int rtn= -1;

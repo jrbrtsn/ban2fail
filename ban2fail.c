@@ -87,7 +87,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 12,
-      .patch= 4
+      .patch= 5
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -166,7 +166,8 @@ main(int argc, char **argv)
    PTRVEC_constructor(&S.toBlock_vec, N_ADDRESSES_HINT);
    PTRVEC_constructor(&S.toUnblock_vec, N_ADDRESSES_HINT);
 
-   { /*=== Parse command line arguments ===*/
+   /* Parse command line arguments */
+   { /*==================================================================*/
       int c, errflg= 0;
       extern char *optarg;
       extern int optind, optopt;
@@ -263,7 +264,8 @@ main(int argc, char **argv)
       goto abort;
    }
 
-   { /*============== Read the configuration file ==============*/
+   /* Read the configuration file */
+   { /*=========================================================*/
       if(!CFGMAP_file_constructor(&S.cfgmap, confFile)) {
          eprintf("ERROR: failed to read configuration from \"%s\"", confFile);
          goto abort;
@@ -272,10 +274,10 @@ main(int argc, char **argv)
       /* Just leave the S.cfgmap in place, so all the value strings
        * don't need to be copied.
        */
-
    }
 
-   { /*============== Obtain a lock on our lockfile ==============*/
+   /* Obtain a file lock to protect cache files */
+   { /*===========================================================*/
       /* Make sure the file exists by open()'ing */
       lock_fd= open(G.lockPath, O_CREAT|O_WRONLY|O_CLOEXEC, 0640);
       if(-1 == lock_fd) {
@@ -304,8 +306,8 @@ main(int argc, char **argv)
 #endif
    assert(G.listing_fh);
 
-
-   { /*============== Open our cache, instantiate LOGTYPE objects ==============*/
+   /* Open our cache, instance file-specific LOGTYPE objects */
+   { /*=============================================================*/
 
       /* Make the directory if needed */
       if(access(G.cacheDir, F_OK)) {
@@ -324,7 +326,8 @@ main(int argc, char **argv)
          fflush(G.listing_fh);
       }
 
-      { /*============== Implement configuration ==============*/
+      /* Implement configuration */
+      { /*-----------------------------------------------------*/
 
          if(configure(&S.cfgmap, NULL)) {
             eprintf("ERROR: failed to realize configuration in \"%s\"", confFile);
@@ -340,15 +343,17 @@ main(int argc, char **argv)
           * don't need to be copied.
           */
 
-      }
+      } /* End implement configuration */
 
+      /*----------------- Print logfile names short circuiting --------------*/
       if(G.flags & GLB_PRINT_LOGFILE_NAMES_FLG) {
          /* Shortcut any further processing or reporting */
          rtn= 0;
          goto abort;
       }
 
-      { /* Check cache for logType directories not in our current map */
+      /* Check cache for logType directories not in our current map, and remove them */
+      { /*---------------------------------------------------------------------*/
          DIR *dir= ez_opendir(G.cacheDir);
          struct dirent *entry;
 
@@ -371,13 +376,16 @@ main(int argc, char **argv)
 
          }
          ez_closedir(dir);
-      }
+      } /* End of cache management */
 
       /* We're done with disk I/O, so release lock */
+      /*-----------------------------------------------------------------------*/
       flock(lock_fd, LOCK_UN);
       ez_close(lock_fd);
       lock_fd= -1;
 
+      /* Processing only for long listings */
+      /*-----------------------------------------------------------------------*/
       if(G.flags & GLB_LONG_LISTING_FLG) {
          MAP map;
          MAP_constructor(&map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
@@ -402,9 +410,12 @@ main(int argc, char **argv)
          MAP_clearAndDestroy(&map, (void*(*)(void*))LOGENTRY_destructor);
          MAP_destructor(&map);
       }
-   }
+   } /* End of cache and logfile-specific LOGENTRY objects */
 
-   { /******* Now get a map of LOGENTRY objects that have combined counts ****/
+   /* Now get a map of LOGENTRY objects that have combined counts.
+    * Perform all remaining processing and reporting.
+    */
+   { /*=======================================================================*/
 
       /* List by address. Make a addr_map of LOGENTRY objects with composite counts */
       MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_map_addr, &S.addr2logEntry_map);
@@ -427,9 +438,11 @@ main(int argc, char **argv)
          ez_fprintf(G.listing_fh, "Performing DNS lookups for up to %d seconds ...\n", DFLT_DNS_PAUSE_SEC);
          fflush(G.listing_fh);
 
+         int64_t begin_ms= clock_gettime_ms(CLOCK_REALTIME);
          int rc= PDNS_lookup(S.lePtrArr, nItems, DFLT_DNS_PAUSE_SEC*1000);
          assert(-1 != rc);
-         ez_fprintf(G.listing_fh, "\t==> Completed %d of %u lookups\n", rc, nItems);
+         int64_t ms= clock_gettime_ms(CLOCK_REALTIME) - begin_ms;
+         ez_fprintf(G.listing_fh, "\t==> Completed %d of %u lookups in %.1f seconds\n", rc, nItems, (double)ms/1000.);
       }
 
       /* Process each LOGENTRY item */

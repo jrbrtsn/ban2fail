@@ -41,7 +41,7 @@
 
 /* How long to wait for reverse DNS lookups before bailing out */
 #ifdef DEBUG
-#       define DFLT_DNS_PAUSE_SEC 10
+#       define DFLT_DNS_PAUSE_SEC 60
 #else
 #       define DFLT_DNS_PAUSE_SEC 60
 #endif
