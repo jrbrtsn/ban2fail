@@ -27,8 +27,12 @@ Common utility routines needed by most c and c++ applications.
 #ifndef UTIL_H
 #define UTIL_H
 
+#define _GNU_SOURCE
 #include <errno.h>
+#include <netdb.h>
 #include <regex.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -361,6 +365,9 @@ int
 rmdir_recursive(const char *path);
 /***************************************************************
  * recursively remove a directory and all of it's contents.
+ *
+ * path: NULL terminated path of directory to be removed.
+ *
  * RETURNS:
  * 0 for success
  * -1 for error
@@ -374,6 +381,46 @@ int _ez_rmdir_recursive (
       const char *funcName,
       const char *path
       );
+
+int
+addrinfo_print(struct addrinfo *ai, FILE *fh);
+/*************************************************************
+ * Print a legible rendition of all struct addrinfo in the
+ * linked-list chain.
+ *
+ * ai:    pinter to a struct addrinfo
+ * fh:    stream for output
+ *
+ * RETURNS:
+ * 0 for success
+ * -1 for error
+ */
+
+int
+addrinfo_is_match(const struct addrinfo *ai, const char *addr);
+/***********************************************************************
+ * Search all members in addrinfo linked list for a match.
+ *
+ * ai:    pinter to a struct addrinfo
+ * addr:  NULL terminated numeric address for strcmp() comparison
+ *
+ * RETURNS:
+ * 1  a match was found
+ * 0  no match was found.
+ */
+
+const char*
+addrinfo_2_addr(const struct addrinfo *ai);
+/***********************************************************************
+ * Return in a static buffer a sting version of the numeric address found
+ * in a single addrinfo struct.
+ *
+ * ai:    pinter to a struct addrinfo
+ *
+ * RETURNS:
+ * NULL for failure
+ * address of the static buffer containing address in null terminated string form.
+ */
 
 #ifdef __cplusplus
 }

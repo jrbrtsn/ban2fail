@@ -835,3 +835,139 @@ int _ez_rmdir_recursive (
    }
    return rtn;
 }
+
+/*============================================================*/
+/*================ struct addrinfo ===========================*/
+/*============================================================*/
+
+const static struct bitTuple ai_flags_btArr[]= {
+   {.name= "AI_ADDRCONFIG", .bit= AI_ADDRCONFIG},
+   {.name= "AI_ALL", .bit= AI_ALL},
+   {.name= "AI_CANONNAME", .bit= AI_CANONNAME},
+   {.name= "AI_NUMERICHOST", .bit= AI_NUMERICHOST},
+   {.name= "AI_NUMERICSERV", .bit= AI_NUMERICSERV},
+   {.name= "AI_PASSIVE", .bit= AI_PASSIVE},
+   {.name= "AI_V4MAPPED", .bit= AI_V4MAPPED},
+   {}
+};
+
+const static struct enumTuple ai_family_etArr[]= {
+   {.name= "AF_INET", .enumVal= AF_INET},
+   {.name= "AF_INET6", .enumVal= AF_INET6},
+   {.name= "AF_UNSPEC", .enumVal= AF_UNSPEC},
+   {}
+};
+
+const static struct enumTuple ai_socktype_etArr[]= {
+   {.name= "SOCK_DGRAM", .enumVal= SOCK_DGRAM},
+   {.name= "SOCK_RAW", .enumVal= SOCK_RAW},
+   {.name= "SOCK_STREAM", .enumVal= SOCK_STREAM},
+   {}
+};
+
+const static struct enumTuple ai_protocol_etArr[]= {
+   {.name= "IPPROTO_TCP", .enumVal= IPPROTO_TCP},
+   {.name= "IPPROTO_UDP", .enumVal= IPPROTO_UDP},
+   {}
+};
+
+
+int
+addrinfo_print(struct addrinfo *ai, FILE *fh)
+/*************************************************************
+ * Print a legible rendition of all struct addrinfo in the
+ * linked-list chain.
+ *
+ * ai:    pinter to a struct addrinfo
+ * fh:    stream for output
+ *
+ * RETURNS:
+ * 0 for success
+ * -1 for error
+ */
+{
+   for(; ai; ai= ai->ai_next) {
+      const char *addr= addrinfo_2_addr(ai);
+      ez_fprintf(fh,
+"struct addressinfo {\n"
+"\tai_flags= %s\n"
+"\tai_family= %s\n"
+"\tai_socktype= %s\n"
+"\tai_protocol= %s\n"
+"\tai_addrlen= %d\n"
+"\tai_addr= %s\n"
+"\tai_cannonname= %s\n"
+"}\n"
+      , bits2str(ai->ai_flags, ai_flags_btArr)
+      , enum2str(ai->ai_family, ai_family_etArr)
+      , enum2str(ai->ai_socktype, ai_socktype_etArr)
+      , enum2str(ai->ai_protocol, ai_protocol_etArr)
+      , (int)ai->ai_addrlen
+      , addr ? addr : "NULL"
+      , ai->ai_canonname ? ai->ai_canonname : "NULL"
+      );
+
+   }
+   return 0;
+}
+
+int
+addrinfo_is_match(const struct addrinfo *ai, const char *addr)
+/***********************************************************************
+ * Search all members in addrinfo linked list for a match.
+ *
+ * ai:    pinter to a struct addrinfo
+ * addr:  NULL terminated numeric address for strcmp() comparison
+ *
+ * RETURNS:
+ * 1  a match was found
+ * 0  no match was found.
+ */
+{
+   for(; ai; ai= ai->ai_next) {
+      const char *this_addr= addrinfo_2_addr(ai);
+      if(!strcmp(this_addr, addr)) return 1;
+   }
+   return 0;
+}
+
+const char*
+addrinfo_2_addr(const struct addrinfo *ai)
+/***********************************************************************
+ * Return in a static buffer a sting version of the numeric address found
+ * in a single addrinfo struct.
+ *
+ * ai:    pinter to a struct addrinfo
+ *
+ * RETURNS:
+ * NULL for failure
+ * address of the static buffer containing address in null terminated string form.
+ */
+{
+#define BUF_SZ 43
+   const char *rtn= NULL;
+   if(!ai->ai_addr) goto abort;
+
+   static _Thread_local char buf[BUF_SZ];
+   memset(buf, 0, sizeof(buf));
+
+   switch(ai->ai_family) {
+      case AF_INET: {
+            struct sockaddr_in *sin= (struct sockaddr_in*)ai->ai_addr;
+            rtn= inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof(buf)-1);
+         } break;
+
+      case AF_INET6: {
+            struct sockaddr_in6 *sin6= (struct sockaddr_in6*)ai->ai_addr;
+            rtn= inet_ntop(AF_INET6, &sin6->sin6_addr, buf, sizeof(buf)-1);
+         } break;
+
+      default:
+         assert(0);
+
+   }
+
+abort:
+   return rtn;
+}
+

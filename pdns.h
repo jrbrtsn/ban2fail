@@ -31,6 +31,7 @@
 
 /* Number of threads to use in parallel */
 #define PDNS_MAX_THREADS        200
+/* Size manager's inbox to avoid overflow */
 #define PDNS_MGR_INBOX_SZ       PDNS_MAX_THREADS*2
 #define PDNS_WORKER_INBOX_SZ    1
 /* Give worker threads a chance to join */
@@ -44,7 +45,13 @@ enum PDNS_flags {
    PDNS_FWD_FAIL_FLG=   1<<4,
    PDNS_FWD_NONE_FLG=   1<<5,
    PDNS_FWD_MISMATCH_FLG= 1<<6,
-   PDNS_DONE_MASK= PDNS_SERVFAIL_FLG|PDNS_NXDOMAIN_FLG|PDNS_FWD_DNS_FLG
+   PDNS_DONE_MASK= PDNS_SERVFAIL_FLG|PDNS_NXDOMAIN_FLG|PDNS_FWD_DNS_FLG,
+   PDNS_BAD_MASK= PDNS_SERVFAIL_FLG|
+                  PDNS_NXDOMAIN_FLG|
+                  PDNS_FWD_FAIL_FLG|
+                  PDNS_FWD_NONE_FLG|
+                  PDNS_FWD_MISMATCH_FLG
+
 };
 
 #define _GNU_SOURCE

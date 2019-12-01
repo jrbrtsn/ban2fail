@@ -94,11 +94,8 @@ LOGENTRY_destructor(LOGENTRY *self)
  * Free resources.
  */
 {
-   /* Sometimes this is assigned a static string */
-   if(self->dns.flags & PDNS_REV_DNS_FLG && self->dns.name)
-   {
+   if(self->dns.name)
       free(self->dns.name);
-   }
 
    return self;
 }

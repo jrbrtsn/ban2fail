@@ -86,8 +86,8 @@ struct Global G= {
 
    .version= {
       .major= 0,
-      .minor= 12,
-      .patch= 5
+      .minor= 13,
+      .patch= 0
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -100,10 +100,10 @@ const static struct initInfo S_initInfo_arr[] = {
 };
 
 static const struct bitTuple BlockBitTuples[]= {
-   {.name= "BLOCKED", .bit= BLOCKED_FLG},
-   {.name= "+WouldBLOCK+", .bit= WOULD_BLOCK_FLG},
-   {.name= "-UnjustBLOCK-", .bit= UNJUST_BLOCK_FLG},
-   {.name= "Whitelisted",   .bit= WHITELIST_FLG},
+   {.name= "BLK", .bit= BLOCKED_FLG},
+   {.name= "+blk+", .bit= WOULD_BLOCK_FLG},
+   {.name= "-blk-", .bit= UNJUST_BLOCK_FLG},
+   {.name= "WL",   .bit= WHITELIST_FLG},
    {/* Terminating member */}
 };
 
@@ -201,9 +201,11 @@ main(int argc, char **argv)
             case 'a':
                G.flags |= GLB_LIST_ADDR_FLG;
                if(optarg) {
-                  if(*optarg == '+')
+                  if(*optarg == '+') {
                      G.flags |= GLB_DNS_LOOKUP_FLG;
-                  else
+                  } else if(*optarg == '-') {
+                     G.flags |= GLB_DNS_LOOKUP_FLG|GLB_DNS_FILTER_BAD_FLG;
+                  } else
                      ++errflg;
                }
                break;
@@ -477,28 +479,29 @@ main(int argc, char **argv)
          }
 
          /* Print out only for list option */
-         if(G.flags & GLB_LIST_ADDR_FLG) {
+         if(G.flags & GLB_LIST_ADDR_FLG &&
+            !(G.flags & GLB_DNS_FILTER_BAD_FLG && e->dns.flags & PDNS_BAD_MASK))
+         {
 
-            const static char *dns_fmt= "%-15s\t%5u/%-4d offenses %s (%s) %s%s\n",
-                              *fmt= "%-15s\t%5u/%-4d offenses %s (%s)\n";
+            const static struct bitTuple dns_flagsArr[]= {
+               {.name= "~", .bit= PDNS_FWD_FAIL_FLG},
+               {.name= "!!", .bit= PDNS_FWD_NONE_FLG},
+               {.name= "NXDOMAIN", .bit= PDNS_NXDOMAIN_FLG},
+               {.name= "SERVFAIL", .bit= PDNS_SERVFAIL_FLG},
+               {}
+            };
 
-            const char *failStat= "";
-            if(e->dns.flags & PDNS_FWD_FAIL_FLG)
-               failStat= " ~";
-            if(e->dns.flags & PDNS_FWD_NONE_FLG)
-               failStat= " *";
-            if(e->dns.flags & PDNS_FWD_MISMATCH_FLG)
-               failStat= " !";
+            const static char *dns_fmt= "%-15s\t%5u/%-4d offenses %s [%s] %s %s\n",
+                              *fmt= "%-15s\t%5u/%-4d offenses %s [%s]\n";
 
-            ez_fprintf(G.listing_fh, e->dns.name  ? dns_fmt : fmt
+            ez_fprintf(G.listing_fh, e->dns.flags ? dns_fmt : fmt
                   , e->addr
                   , e->count
                   , nAllowed
                   , e->cntry[0] ? e->cntry : "--"
                   , bits2str(flags, BlockBitTuples)
-                  , e->dns.name
-                  , failStat
-                  , e->dns.getaddrinfo_rtn
+                  , e->dns.name ? e->dns.name : ""
+                  , bits2str(e->dns.flags, dns_flagsArr)
                   );
          }
 

@@ -36,7 +36,6 @@ typedef struct _LOGENTRY {
    struct {
       enum PDNS_flags flags;
       char *name;
-      int getaddrinfo_rtn;
    } dns;
    
 } LOGENTRY;

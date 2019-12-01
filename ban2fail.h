@@ -41,7 +41,7 @@
 
 /* How long to wait for reverse DNS lookups before bailing out */
 #ifdef DEBUG
-#       define DFLT_DNS_PAUSE_SEC 60
+#       define DFLT_DNS_PAUSE_SEC 10
 #else
 #       define DFLT_DNS_PAUSE_SEC 60
 #endif
@@ -59,13 +59,14 @@
 /* Singleton static object with global visibility */
 extern struct Global {
    enum {
-      GLB_VERBOSE_FLG       =1<<0,
-      GLB_LIST_ADDR_FLG     =1<<1,
-      GLB_LIST_CNTRY_FLG    =1<<2,
-      GLB_DONT_IPTABLE_FLG  =1<<3,
-      GLB_LIST_SUMMARY_FLG  =1<<4,
-      GLB_PRINT_LOGFILE_NAMES_FLG  =1<<5,
-      GLB_DNS_LOOKUP_FLG    =1<<6,
+      GLB_VERBOSE_FLG            =1<<0,
+      GLB_LIST_ADDR_FLG          =1<<1,
+      GLB_LIST_CNTRY_FLG         =1<<2,
+      GLB_DONT_IPTABLE_FLG       =1<<3,
+      GLB_LIST_SUMMARY_FLG       =1<<4,
+      GLB_PRINT_LOGFILE_NAMES_FLG=1<<5,
+      GLB_DNS_LOOKUP_FLG         =1<<6,
+      GLB_DNS_FILTER_BAD_FLG     =1<<7,
       GLB_LONG_LISTING_FLG = GLB_LIST_CNTRY_FLG|GLB_LIST_ADDR_FLG
    } flags;
 
