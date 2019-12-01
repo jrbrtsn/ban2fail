@@ -15,21 +15,23 @@ src := \
        ban2fail.c \
        cfgmap.c \
        cntry.c \
-       ez_dirent.c \
-       ez_gzfile.c \
-       ez_stdio.c \
-       ez_stdlib.c \
+       es.c \
+       ez_es.c \
+       ez_libc.c \
+       ez_libz.c \
        iptables.c \
        logType.c \
        logEntry.c \
        logFile.c \
        map.c \
        maxoff.c \
+       msgqueue.c \
+       pdns.c \
        ptrvec.c \
        str.c \
        util.c \
 
-   libs :=  z crypto GeoIP
+   libs := z crypto GeoIP pthread
 endif
 
 ########################################
