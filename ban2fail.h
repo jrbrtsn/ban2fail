@@ -39,7 +39,9 @@
 #define N_ADDRESSES_HINT 10000
 #define BUCKET_DEPTH_HINT 10
 
-/* How long to wait for reverse DNS lookups before bailing out */
+/* How long to wait for reverse DNS lookups before giving up and
+ * moving on with the report.
+ */
 #ifdef DEBUG
 #       define DFLT_DNS_PAUSE_SEC 10
 #else
@@ -55,27 +57,32 @@
 #define GEOIP_DB "/usr/share/GeoIP/GeoIP.dat"
 #define GEOIP6_DB "/usr/share/GeoIP/GeoIPv6.dat"
 
+enum GlobalFlg_enum {
+   GLB_VERBOSE_FLG            =1<<0,
+   GLB_LIST_ADDR_FLG          =1<<1,
+   GLB_LIST_CNTRY_FLG         =1<<2,
+   GLB_DONT_IPTABLE_FLG       =1<<3,
+   GLB_LIST_SUMMARY_FLG       =1<<4,
+   GLB_PRINT_LOGFILE_NAMES_FLG=1<<5,
+   GLB_DNS_LOOKUP_FLG         =1<<6,
+   GLB_DNS_FILTER_BAD_FLG     =1<<7,
+   GLB_LONG_LISTING_FLG = GLB_LIST_CNTRY_FLG|GLB_LIST_ADDR_FLG
+};
 
 /* Singleton static object with global visibility */
 extern struct Global {
-   enum {
-      GLB_VERBOSE_FLG            =1<<0,
-      GLB_LIST_ADDR_FLG          =1<<1,
-      GLB_LIST_CNTRY_FLG         =1<<2,
-      GLB_DONT_IPTABLE_FLG       =1<<3,
-      GLB_LIST_SUMMARY_FLG       =1<<4,
-      GLB_PRINT_LOGFILE_NAMES_FLG=1<<5,
-      GLB_DNS_LOOKUP_FLG         =1<<6,
-      GLB_DNS_FILTER_BAD_FLG     =1<<7,
-      GLB_LONG_LISTING_FLG = GLB_LIST_CNTRY_FLG|GLB_LIST_ADDR_FLG
-   } flags;
+
+   enum GlobalFlg_enum flags;
 
    MAP logType_map;
 
    char *cacheDir,
         *lockPath;
 
-   FILE *listing_fh;
+   struct {
+      FILE *fh;
+      PTRVEC addr_vec;
+   } rpt;
 
    struct {
       int major,

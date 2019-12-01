@@ -105,7 +105,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
 
    if(G.flags & GLB_PRINT_LOGFILE_NAMES_FLG) {
 
-      ez_fprintf(G.listing_fh, "%s/%s\n", proto->dir, proto->pfix);
+      ez_fprintf(G.rpt.fh, "%s/%s\n", proto->dir, proto->pfix);
       /* We're going to save time here and short circuit the remainder
        * of the process; because this object will not get used for
        * anything other than listing the file names.
@@ -191,8 +191,8 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          }
 
          if(G.flags & GLB_LONG_LISTING_FLG) {
-            ez_fprintf(G.listing_fh, "Scanning \"%s\"... ", log_fname);
-            fflush(G.listing_fh);
+            ez_fprintf(G.rpt.fh, "Scanning \"%s\"... ", log_fname);
+            fflush(G.rpt.fh);
          }
 
          /* Now we have the checksum of the log file */
@@ -232,8 +232,8 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          LOGFILE_addressCount(f, &nAddrFound);
 
          if(G.flags & GLB_LONG_LISTING_FLG) {
-            ez_fprintf(G.listing_fh, "found %u offenses (%u addresses)\n", nOffFound, nAddrFound);
-            fflush(G.listing_fh);
+            ez_fprintf(G.rpt.fh, "found %u offenses (%u addresses)\n", nOffFound, nAddrFound);
+            fflush(G.rpt.fh);
          }
 
          MAP_addStrKey(&self->file_map, sumStr, f);
@@ -274,13 +274,13 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
    nAddrFound= LOGTYPE_addressCount(self);
 
    if(G.flags & GLB_LONG_LISTING_FLG) {
-      ez_fprintf(G.listing_fh, ">>>> Found %u offenses (%u addresses) for %s/%s*\n"
+      ez_fprintf(G.rpt.fh, ">>>> Found %u offenses (%u addresses) for %s/%s*\n"
             , nOffFound
             , nAddrFound
             , self->dir
             , self->pfix
             );
-      fflush(G.listing_fh);
+      fflush(G.rpt.fh);
    }
 
    rtn= self;

@@ -159,6 +159,7 @@ main(int argc, char **argv)
    /* Prepare static data */
    // global
    MAP_constructor(&G.logType_map, 10, 10);
+   PTRVEC_constructor(&G.rpt.addr_vec, 100);
 
    // local
    MAP_constructor(&S.addr2logEntry_map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
@@ -243,7 +244,8 @@ main(int argc, char **argv)
       if(errflg) {
          ez_fprintf(stderr, 
 "ban2fail v%d.%d.%d Usage:\n"
-"%s [options] [-t confFile]\n"
+"%s [options] [-t confFile] [addr1 addr2 ...]\n"
+"  addr1 ...  print offending lines from logfiles for these addresses\n"
 "  --help\tprint this usage message.\n"
 "  -a[+]\t\tList results by Address. '+' to perform DNS reverse lookups.\n"
 "  -c\t\tlist results by Country\n"
@@ -258,6 +260,14 @@ main(int argc, char **argv)
 
          goto abort;
       }
+
+      /* Pick up addresses on command line */
+      for(; optind < argc; ++optind) {
+         // TODO: instantiate address report objects
+         eprintf("arg %d= \"%s\"", optind, argv[optind]);
+      }
+
+
    } /* Done with command line arguments */
 
    /* Make sure we will be able to run iptables */
@@ -296,17 +306,17 @@ main(int argc, char **argv)
    }
 
    /* Default sending listing to stdout */
-   G.listing_fh= stdout;
+   G.rpt.fh= stdout;
 #ifndef DEBUG
    /* if stdout is a tty, and listing is likely
     * to be long, then use $PAGER.
     */
-   if(G.flags & GLB_LONG_LISTING_FLG && isatty(fileno(G.listing_fh))) {
+   if(G.flags & GLB_LONG_LISTING_FLG && isatty(fileno(G.rpt.fh))) {
       S.flags |= PAGER_RUNNING_FLG;
-      G.listing_fh= pager_open();
+      G.rpt.fh= pager_open();
    }
 #endif
-   assert(G.listing_fh);
+   assert(G.rpt.fh);
 
    /* Open our cache, instance file-specific LOGTYPE objects */
    { /*=============================================================*/
@@ -320,12 +330,12 @@ main(int argc, char **argv)
       }
 
       if(G.flags & GLB_LONG_LISTING_FLG) {
-         ez_fprintf(G.listing_fh, "=============== ban2fail v%d.%d.%d =============\n"
+         ez_fprintf(G.rpt.fh, "=============== ban2fail v%d.%d.%d =============\n"
                , G.version.major
                , G.version.minor
                , G.version.patch
                );
-         fflush(G.listing_fh);
+         fflush(G.rpt.fh);
       }
 
       /* Implement configuration */
@@ -337,8 +347,8 @@ main(int argc, char **argv)
          }
 
          if(G.flags & GLB_VERBOSE_FLG) { /* Warn about unused symbols */
-            CFGMAP_print_unused_symbols(&S.cfgmap, G.listing_fh);
-            fflush(G.listing_fh);
+            CFGMAP_print_unused_symbols(&S.cfgmap, G.rpt.fh);
+            fflush(G.rpt.fh);
          }
 
          /* Just leave the S.cfgmap in place, so all the value strings
@@ -401,12 +411,12 @@ main(int argc, char **argv)
          /* Number of items in map is number of unique addresses */
          nAddrFound= MAP_numItems(&map);
 
-         ez_fprintf(G.listing_fh,
+         ez_fprintf(G.rpt.fh,
 "===== Found %u total offenses (%u addresses) =====\n"
             , nOffFound
             , nAddrFound
             );
-         fflush(G.listing_fh);
+         fflush(G.rpt.fh);
 
          /* Clean up map used for counting */
          MAP_clearAndDestroy(&map, (void*(*)(void*))LOGENTRY_destructor);
@@ -437,14 +447,14 @@ main(int argc, char **argv)
       /* Special processing for DNS lookups */
       if(G.flags & GLB_DNS_LOOKUP_FLG) {
 
-         ez_fprintf(G.listing_fh, "Performing DNS lookups for up to %d seconds ...\n", DFLT_DNS_PAUSE_SEC);
-         fflush(G.listing_fh);
+         ez_fprintf(G.rpt.fh, "Performing DNS lookups for up to %d seconds ...\n", DFLT_DNS_PAUSE_SEC);
+         fflush(G.rpt.fh);
 
          int64_t begin_ms= clock_gettime_ms(CLOCK_REALTIME);
          int rc= PDNS_lookup(S.lePtrArr, nItems, DFLT_DNS_PAUSE_SEC*1000);
          assert(-1 != rc);
          int64_t ms= clock_gettime_ms(CLOCK_REALTIME) - begin_ms;
-         ez_fprintf(G.listing_fh, "\t==> Completed %d of %u lookups in %.1f seconds\n", rc, nItems, (double)ms/1000.);
+         ez_fprintf(G.rpt.fh, "\t==> Completed %d of %u lookups in %.1f seconds\n", rc, nItems, (double)ms/1000.);
       }
 
       /* Process each LOGENTRY item */
@@ -494,7 +504,7 @@ main(int argc, char **argv)
             const static char *dns_fmt= "%-15s\t%5u/%-4d offenses %s [%s] %s %s\n",
                               *fmt= "%-15s\t%5u/%-4d offenses %s [%s]\n";
 
-            ez_fprintf(G.listing_fh, e->dns.flags ? dns_fmt : fmt
+            ez_fprintf(G.rpt.fh, e->dns.flags ? dns_fmt : fmt
                   , e->addr
                   , e->count
                   , nAllowed
@@ -533,16 +543,16 @@ main(int argc, char **argv)
             for(unsigned i= 0; i < vec_sz; ++i) {
 
                struct cntryStat *cs= rtn_vec[i];
-               ez_fprintf(G.listing_fh, "%2s  %5u blocked addresses\n"
+               ez_fprintf(G.rpt.fh, "%2s  %5u blocked addresses\n"
                      , cs->cntry[0] ? cs->cntry : "--"
                      , cs->nAddr
                      );
             }
 
-            ez_fprintf(G.listing_fh, "===============================================\n");
+            ez_fprintf(G.rpt.fh, "===============================================\n");
          }
 
-         ez_fprintf(G.listing_fh, "%6u countries affected\n" , vec_sz);
+         ez_fprintf(G.rpt.fh, "%6u countries affected\n" , vec_sz);
 
       }
 
@@ -551,7 +561,7 @@ main(int argc, char **argv)
       unsigned n2Unblock= PTRVEC_numItems(&S.toUnblock_vec);
    
       if(G.flags & GLB_LIST_ADDR_FLG && !(G.flags & (GLB_LIST_SUMMARY_FLG|GLB_LIST_CNTRY_FLG)))
-         ez_fprintf(G.listing_fh, "===============================================\n");
+         ez_fprintf(G.rpt.fh, "===============================================\n");
 
       if(!(G.flags & GLB_DONT_IPTABLE_FLG)) {
 
@@ -561,7 +571,7 @@ main(int argc, char **argv)
                eprintf("ERROR: cannot block addresses!");
                goto abort;
             }
-            ez_fprintf(G.listing_fh, "Blocked %u new hosts\n", n2Block);
+            ez_fprintf(G.rpt.fh, "Blocked %u new hosts\n", n2Block);
          }
 
          if(n2Unblock) {
@@ -570,28 +580,28 @@ main(int argc, char **argv)
                eprintf("ERROR: cannot unblock addresses!");
                goto abort;
             }
-            ez_fprintf(G.listing_fh, "Unblocked %u hosts\n", n2Unblock);
+            ez_fprintf(G.rpt.fh, "Unblocked %u hosts\n", n2Unblock);
          }
 
       } else {
 
          if(n2Block) 
-            ez_fprintf(G.listing_fh, "Would block %u new hosts\n", n2Block);
+            ez_fprintf(G.rpt.fh, "Would block %u new hosts\n", n2Block);
 
          if(n2Unblock)
-            ez_fprintf(G.listing_fh, "Would unblock %u hosts\n", n2Unblock);
+            ez_fprintf(G.rpt.fh, "Would unblock %u hosts\n", n2Unblock);
       }
 
       if(G.flags & (GLB_LIST_ADDR_FLG|GLB_LIST_SUMMARY_FLG))
-            ez_fprintf(G.listing_fh, "%6u addresses currently blocked\n" , currBlocked + n2Block - n2Unblock);
+            ez_fprintf(G.rpt.fh, "%6u addresses currently blocked\n" , currBlocked + n2Block - n2Unblock);
 
    }
 
-   fflush(G.listing_fh);
+   fflush(G.rpt.fh);
 
    /* Wait for pager to finish, if it is running */
    if(S.flags & PAGER_RUNNING_FLG)
-      ez_pclose(G.listing_fh);
+      ez_pclose(G.rpt.fh);
 
    rtn= EXIT_SUCCESS;
 abort:
