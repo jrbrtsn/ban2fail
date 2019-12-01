@@ -18,6 +18,7 @@
  ***************************************************************************/
 
 #define _GNU_SOURCE
+#include <arpa/inet.h>
 #include <assert.h>
 #include <limits.h>
 #include <signal.h>
@@ -54,11 +55,14 @@ struct workerMsg {
 /*============================================================*/
 /*=========== Forward declarations ===========================*/
 /*============================================================*/
+static const char* addrinfo2addr(const struct addrinfo *ai);
+static int addrinfo_is_match(const struct addrinfo *ai, const char *addr);
 static int mgr_check_inbox_f(void *data, int signo);
 static int worker_check_inbox_f(void *vp_ndx, int signo);
 static void* worker_main (void *data);
 static int worker_exit_f(void *data, int signo);
 static int join_f(void *data, int signo);
+static int print_addrinfo(struct addrinfo *ai, FILE *fh);
 static void stop_remaining_workers(void);
 static int timeout_f(void *data);
 static int shutdown_f(void *data);
@@ -97,8 +101,15 @@ static struct {
       MSGQUEUE inbox;
 
    } workerArr[PDNS_MAX_THREADS];
+#ifdef DEBUG
+   pthread_mutex_t prt_mtx;
+#endif
    
-} S;
+} S= {
+#ifdef DEBUG
+   .prt_mtx= PTHREAD_MUTEX_INITIALIZER
+#endif
+};
 
 /*============================================================*/
 /*=========== PDNS ===========================================*/
@@ -379,20 +390,34 @@ worker_check_inbox_f(void *vp_ndx, int signo)
       assert(msg.e);
       int64_t ms= clock_gettime_ms(CLOCK_REALTIME) - S.start_ms;
 
+      /* Check to see if we've finished the reverse DNS lookup */
       if(msg.e->dns.flags & PDNS_REV_DNS_FLG) {
 
          const static struct addrinfo hints= {
-            .ai_family = AF_UNSPEC,    /* Allow IPv4 or IPv6 */
+            .ai_family= AF_UNSPEC,    /* Allow IPv4 or IPv6 */
+            .ai_socktype= SOCK_DGRAM,
+            .ai_protocol= IPPROTO_UDP
          };
 
          /* Get a populated addrinfo object */
          struct addrinfo *res= NULL;
          int rc= ez_getaddrinfo(msg.e->dns.name, NULL, &hints, &res);
 
+#ifdef qqDEBUG
+if(!strcmp(msg.e->addr, "50.116.38.131")) {
+   pthread_mutex_lock(&S.prt_mtx);
+   ez_fprintf(stderr, "%s (%s) ----------------------------------\n", msg.e->addr, msg.e->dns.name);
+   print_addrinfo(res, stderr);
+   fflush(stderr);
+   pthread_mutex_unlock(&S.prt_mtx);
+}
+#endif
          msg.e->dns.getaddrinfo_rtn= rc;
 
          switch(rc) {
             case 0:
+               if(!addrinfo_is_match(res, msg.e->addr))
+                  msg.e->dns.flags |= PDNS_FWD_MISMATCH_FLG;
                break;
 
             case EAI_NONAME:
@@ -414,11 +439,15 @@ worker_check_inbox_f(void *vp_ndx, int signo)
          /* In any case, we are done */
          msg.e->dns.flags |= PDNS_FWD_DNS_FLG;
 
+         if(res) freeaddrinfo(res);
+
       } else { /* reverse lookup */
 
          const static struct addrinfo hints= {
+            .ai_flags = AI_NUMERICHOST, /* doing reverse lookups */
             .ai_family = AF_UNSPEC,    /* Allow IPv4 or IPv6 */
-            .ai_flags = AI_NUMERICHOST /* doing reverse lookups */
+            .ai_socktype= SOCK_DGRAM,
+            .ai_protocol= IPPROTO_UDP
          };
 
          /* Place to which getnameinfo can copy result */
@@ -431,6 +460,18 @@ worker_check_inbox_f(void *vp_ndx, int signo)
          assert(res && res->ai_addr && res->ai_addrlen);
          /* Now do blocking reverse lookup */
          rc= ez_getnameinfo(res->ai_addr, res->ai_addrlen, hostBuf, sizeof(hostBuf)-1, NULL, 0, NI_NAMEREQD);
+
+#ifdef qqDEBUG
+if(!strcmp(msg.e->addr, "50.116.38.131")) {
+   pthread_mutex_lock(&S.prt_mtx);
+   ez_fprintf(stderr, "%s ----------------------------------\n", msg.e->addr);
+   print_addrinfo(res, stderr);
+   fflush(stderr);
+   pthread_mutex_unlock(&S.prt_mtx);
+}
+#endif
+         if(res) freeaddrinfo(res);
+
          switch(rc) {
             case 0:
                msg.e->dns.name= strdup(hostBuf);
@@ -451,6 +492,7 @@ worker_check_inbox_f(void *vp_ndx, int signo)
                eprintf("FATAL: getnameinfo() returned %d", rc);
                abort();
          }
+
       }
 
       /* Catch being bumped out of blocking call by signal */
@@ -484,3 +526,117 @@ worker_exit_f(void *vp_ndx, int signo)
 {
    return -1;
 }
+
+
+/*============================================================*/
+/*================ Misc. =====================================*/
+/*============================================================*/
+const static struct bitTuple ai_flags_btArr[]= {
+   {.name= "AI_ADDRCONFIG", .bit= AI_ADDRCONFIG},
+   {.name= "AI_ALL", .bit= AI_ALL},
+   {.name= "AI_CANONNAME", .bit= AI_CANONNAME},
+   {.name= "AI_NUMERICHOST", .bit= AI_NUMERICHOST},
+   {.name= "AI_NUMERICSERV", .bit= AI_NUMERICSERV},
+   {.name= "AI_PASSIVE", .bit= AI_PASSIVE},
+   {.name= "AI_V4MAPPED", .bit= AI_V4MAPPED},
+   {}
+};
+
+const static struct enumTuple ai_family_etArr[]= {
+   {.name= "AF_INET", .enumVal= AF_INET},
+   {.name= "AF_INET6", .enumVal= AF_INET6},
+   {.name= "AF_UNSPEC", .enumVal= AF_UNSPEC},
+   {}
+};
+
+const static struct enumTuple ai_socktype_etArr[]= {
+   {.name= "SOCK_DGRAM", .enumVal= SOCK_DGRAM},
+   {.name= "SOCK_RAW", .enumVal= SOCK_RAW},
+   {.name= "SOCK_STREAM", .enumVal= SOCK_STREAM},
+   {}
+};
+
+const static struct enumTuple ai_protocol_etArr[]= {
+   {.name= "IPPROTO_TCP", .enumVal= IPPROTO_TCP},
+   {.name= "IPPROTO_UDP", .enumVal= IPPROTO_UDP},
+   {}
+};
+
+
+static int
+print_addrinfo(struct addrinfo *ai, FILE *fh)
+/*************************************************************
+ * Print a legible rendition of a struct addrinfo.
+ */
+{
+   for(; ai; ai= ai->ai_next) {
+      const char *addr= addrinfo2addr(ai);
+      ez_fprintf(fh,
+"struct addressinfo {\n"
+"\tai_flags= %s\n"
+"\tai_family= %s\n"
+"\tai_socktype= %s\n"
+"\tai_protocol= %s\n"
+"\tai_addrlen= %d\n"
+"\tai_addr= %s\n"
+"\tai_cannonname= %s\n"
+"}\n"
+      , bits2str(ai->ai_flags, ai_flags_btArr)
+      , enum2str(ai->ai_family, ai_family_etArr)
+      , enum2str(ai->ai_socktype, ai_socktype_etArr)
+      , enum2str(ai->ai_protocol, ai_protocol_etArr)
+      , (int)ai->ai_addrlen
+      , addr ? addr : "NULL"
+      , ai->ai_canonname ? ai->ai_canonname : "NULL"
+      );
+
+   }
+   return 0;
+}
+
+static int
+addrinfo_is_match(const struct addrinfo *ai, const char *addr)
+/***********************************************************************
+ * Search all members in linked list for a match.
+ */
+{
+   for(; ai; ai= ai->ai_next) {
+      const char *this_addr= addrinfo2addr(ai);
+      if(!strcmp(this_addr, addr)) return 1;
+   }
+   return 0;
+}
+
+static const char*
+addrinfo2addr(const struct addrinfo *ai)
+/***********************************************************************
+ * Get address in static string buffer
+ */
+{
+#define BUF_SZ 43
+   const char *rtn= NULL;
+   if(!ai->ai_addr) goto abort;
+
+   static _Thread_local char buf[BUF_SZ];
+   memset(buf, 0, sizeof(buf));
+
+   switch(ai->ai_family) {
+      case AF_INET: {
+            struct sockaddr_in *sin= (struct sockaddr_in*)ai->ai_addr;
+            rtn= inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof(buf)-1);
+         } break;
+
+      case AF_INET6: {
+            struct sockaddr_in6 *sin6= (struct sockaddr_in6*)ai->ai_addr;
+            rtn= inet_ntop(AF_INET6, &sin6->sin6_addr, buf, sizeof(buf)-1);
+         } break;
+
+      default:
+         assert(0);
+
+   }
+
+abort:
+   return rtn;
+}
+

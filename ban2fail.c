@@ -475,6 +475,8 @@ main(int argc, char **argv)
                failStat= " ~";
             if(e->dns.flags & PDNS_FWD_NONE_FLG)
                failStat= " *";
+            if(e->dns.flags & PDNS_FWD_MISMATCH_FLG)
+               failStat= " !";
 
             ez_fprintf(G.listing_fh, e->dns.name  ? dns_fmt : fmt
                   , e->addr
