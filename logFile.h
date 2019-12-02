@@ -28,9 +28,12 @@
 typedef struct _LOGFILE {
    int flags;
    char *logFilePath;
-   MAP addr2logEntry_map;
+   MAP addr2offEntry_map;
    unsigned nOffenses;
 } LOGFILE;
+
+#define LOGFILE_logFilePath(self) \
+   (const char*)(self)->logFilePath
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,7 +86,7 @@ LOGFILE_print(LOGFILE *self, FILE *fh);
 int
 LOGFILE_map_addr(LOGFILE *self, MAP *h_rtnMap);
 /********************************************************
- * Create a map of LOGENTRY objects with composite
+ * Create a map of OFFENTRY objects with composite
  * counts by address.
  */
 

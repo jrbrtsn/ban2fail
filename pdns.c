@@ -42,13 +42,13 @@ enum lookupType {
 
 /* Messages in the mgr inbox look like this */
 struct mgrMsg {
-   LOGENTRY *e;
+   OFFENTRY *e;
    unsigned worker_ndx;
 };
 
 /* Messages in the worker inbox look like this */
 struct workerMsg {
-   LOGENTRY *e;
+   OFFENTRY *e;
 };
 
 
@@ -84,7 +84,7 @@ static struct {
 
    pthread_t tid;
    MSGQUEUE inbox;
-   LOGENTRY **lePtrArr;
+   OFFENTRY **lePtrArr;
    unsigned processedNdx,
             nThreads,
             nItems;
@@ -112,9 +112,9 @@ static struct {
 /*=========== PDNS ===========================================*/
 /*============================================================*/
 int
-PDNS_lookup(LOGENTRY *lePtrArr[], unsigned nItems, unsigned timeout_ms)
+PDNS_lookup(OFFENTRY *lePtrArr[], unsigned nItems, unsigned timeout_ms)
 /**************************************************************
- * Perform parallel DNS reverse lookups on all LOGENTRY objects
+ * Perform parallel DNS reverse lookups on all OFFENTRY objects
  * referenced in lePtrArr.
  */
 {

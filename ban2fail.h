@@ -23,6 +23,7 @@
 #ifndef BAN2FAIL_H
 #define BAN2FAIL_H
 
+#define _GNU_SOURCE
 #include <regex.h>
 #include <stdint.h>
 
@@ -66,7 +67,8 @@ enum GlobalFlg_enum {
    GLB_PRINT_LOGFILE_NAMES_FLG=1<<5,
    GLB_DNS_LOOKUP_FLG         =1<<6,
    GLB_DNS_FILTER_BAD_FLG     =1<<7,
-   GLB_LONG_LISTING_FLG = GLB_LIST_CNTRY_FLG|GLB_LIST_ADDR_FLG
+   GLB_NO_CACHE_FLG           =1<<8,
+   GLB_LONG_LISTING_MASK = GLB_LIST_CNTRY_FLG|GLB_LIST_ADDR_FLG
 };
 
 /* Singleton static object with global visibility */
@@ -81,7 +83,7 @@ extern struct Global {
 
    struct {
       FILE *fh;
-      PTRVEC addr_vec;
+      MAP AddrRPT_map;
    } rpt;
 
    struct {

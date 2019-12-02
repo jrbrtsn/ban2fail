@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "addrRpt.h"
 #include "cntry.h"
 #include "offEntry.h"
 #include "logFile.h"
@@ -48,7 +49,7 @@ common_constructor(LOGFILE *self)
  */
 {
    memset(self, 0, sizeof(*self));
-   MAP_constructor(&self->addr2logEntry_map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
+   MAP_constructor(&self->addr2offEntry_map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
 }
 
 LOGFILE*
@@ -65,10 +66,10 @@ LOGFILE_cache_constructor(LOGFILE *self, const char *fname)
 
    static char buf[256];
    while(ez_fgets(buf, sizeof(buf), fh)) {
-      LOGENTRY *e;
-      LOGENTRY_cache_create(e, buf);
+      OFFENTRY *e;
+      OFFENTRY_cache_create(e, buf);
       if(!e) goto abort;
-      MAP_addStrKey(&self->addr2logEntry_map, e->addr, e);
+      MAP_addStrKey(&self->addr2offEntry_map, e->addr, e);
    }
 
    rtn= self;
@@ -114,15 +115,20 @@ LOGFILE_log_constructor(LOGFILE *self, const struct logProtoType *h_protoType, c
          strncpy(addr, lbuf+matchArr[1].rm_so, sizeof(addr)-1);
          addr[MIN(len, sizeof(addr)-1)]= '\0';
 
-         LOGENTRY *e= MAP_findStrItem(&self->addr2logEntry_map, addr);
+         OFFENTRY *e= MAP_findStrItem(&self->addr2offEntry_map, addr);
          if(!e) {
-            LOGENTRY_addr_create(e, addr);
+            OFFENTRY_addr_create(e, addr);
             if(!e) goto abort;
 
-            /* Add to the addr2logEntry_map */
-            MAP_addStrKey(&self->addr2logEntry_map, e->addr, e);
+            /* Add to the addr2offEntry_map */
+            MAP_addStrKey(&self->addr2offEntry_map, e->addr, e);
          }
-         LOGENTRY_register(e);
+         OFFENTRY_register(e);
+
+         /* Take care of reporting, if necessary */
+         AddrRPT *ar= MAP_findStrItem(&G.rpt.AddrRPT_map, e->addr);
+         if(ar)
+            AddrRPT_addLine(ar, self, lbuf);
       }
    }
 
@@ -142,8 +148,8 @@ LOGFILE_destructor(LOGFILE *self)
    if(self->logFilePath)
       free(self->logFilePath);
 
-   MAP_clearAndDestroy(&self->addr2logEntry_map, (void*(*)(void*))LOGENTRY_destructor);
-   MAP_destructor(&self->addr2logEntry_map);
+   MAP_clearAndDestroy(&self->addr2offEntry_map, (void*(*)(void*))OFFENTRY_destructor);
+   MAP_destructor(&self->addr2offEntry_map);
 
   return self;
 }
@@ -169,7 +175,7 @@ LOGFILE_writeCache(LOGFILE *self, const char *fname)
    int rc, rtn= -1;
 
    FILE *fh= ez_fopen(fname, "w");
-   rc= MAP_visitAllEntries(&self->addr2logEntry_map, (int(*)(void*,void*))LOGENTRY_cacheWrite, fh);
+   rc= MAP_visitAllEntries(&self->addr2offEntry_map, (int(*)(void*,void*))OFFENTRY_cacheWrite, fh);
    if(rc) goto abort;
 
    rtn= 0;
@@ -185,7 +191,7 @@ LOGFILE_print(LOGFILE *self, FILE *fh)
  */
 {
    ez_fprintf(fh, "LOGFILE %p \"%s\" {\n", self, self->logFilePath);
-   MAP_visitAllEntries(&self->addr2logEntry_map, (int(*)(void*,void*))LOGENTRY_print, fh);
+   MAP_visitAllEntries(&self->addr2offEntry_map, (int(*)(void*,void*))OFFENTRY_print, fh);
    ez_fprintf(fh, "}\n");
 
    return 0;
@@ -194,11 +200,11 @@ LOGFILE_print(LOGFILE *self, FILE *fh)
 int
 LOGFILE_map_addr(LOGFILE *self, MAP *h_rtnMap)
 /********************************************************
- * Create a addr2logEntry_map of LOGENTRY objects with composite
+ * Create a addr2offEntry_map of OFFENTRY objects with composite
  * counts by address.
  */
 {
-   MAP_visitAllEntries(&self->addr2logEntry_map, (int(*)(void*,void*))LOGENTRY_map_addr, h_rtnMap);
+   MAP_visitAllEntries(&self->addr2offEntry_map, (int(*)(void*,void*))OFFENTRY_map_addr, h_rtnMap);
    return 0;
 }
 
@@ -209,7 +215,7 @@ LOGFILE_offenseCount(LOGFILE *self, unsigned *h_sum)
  */
 {
    if(!(self->flags & NOFFENSES_CACHED_FLG)) {
-      MAP_visitAllEntries(&self->addr2logEntry_map, (int(*)(void*,void*))LOGENTRY_offenseCount, &self->nOffenses);
+      MAP_visitAllEntries(&self->addr2offEntry_map, (int(*)(void*,void*))OFFENTRY_offenseCount, &self->nOffenses);
       self->flags |= NOFFENSES_CACHED_FLG;
    }
 
@@ -224,7 +230,7 @@ LOGFILE_addressCount(LOGFILE *self, unsigned *h_sum)
  * Get a count of all unique addresses for this file.
  */
 {
-   *h_sum += MAP_numItems(&self->addr2logEntry_map);
+   *h_sum += MAP_numItems(&self->addr2offEntry_map);
    return 0;
 }
 

@@ -30,11 +30,11 @@
 #include "util.h"
 
 /********************************************************/
-/**************** LOGENTRY ******************************/
+/**************** OFFENTRY ******************************/
 /********************************************************/
 
 static void
-common_constructor(LOGENTRY *self)
+common_constructor(OFFENTRY *self)
 /******************************************************************
  * common portion for all constructors.
  */
@@ -42,13 +42,13 @@ common_constructor(LOGENTRY *self)
    memset(self, 0, sizeof(*self));
 }
 
-LOGENTRY*
-LOGENTRY_addr_constructor(LOGENTRY *self, const char *addr)
+OFFENTRY*
+OFFENTRY_addr_constructor(OFFENTRY *self, const char *addr)
 /********************************************************
  * Prepare for use.
  */
 {
-   LOGENTRY *rtn= NULL;
+   OFFENTRY *rtn= NULL;
 
    common_constructor(self);
 
@@ -63,13 +63,13 @@ abort:
    return rtn;
 }
 
-LOGENTRY*
-LOGENTRY_cache_constructor(LOGENTRY *self, const char *cacheFileEntry)
+OFFENTRY*
+OFFENTRY_cache_constructor(OFFENTRY *self, const char *cacheFileEntry)
 /********************************************************
  * Prepare for use.
  */
 {
-   LOGENTRY *rtn= NULL;
+   OFFENTRY *rtn= NULL;
 
    common_constructor(self);
 
@@ -89,7 +89,7 @@ abort:
 }
 
 void*
-LOGENTRY_destructor(LOGENTRY *self)
+OFFENTRY_destructor(OFFENTRY *self)
 /********************************************************
  * Free resources.
  */
@@ -101,7 +101,7 @@ LOGENTRY_destructor(LOGENTRY *self)
 }
 
 void
-LOGENTRY_register(LOGENTRY *self)
+OFFENTRY_register(OFFENTRY *self)
 /********************************************************
  * Register the current failure try.
  */
@@ -112,7 +112,7 @@ LOGENTRY_register(LOGENTRY *self)
 
 
 int
-LOGENTRY_cacheWrite(LOGENTRY *self, FILE *fh)
+OFFENTRY_cacheWrite(OFFENTRY *self, FILE *fh)
 /********************************************************
  * Write to the cache file in a form we can read later.
  */
@@ -126,7 +126,7 @@ LOGENTRY_cacheWrite(LOGENTRY *self, FILE *fh)
 }
 
 int
-LOGENTRY_print(LOGENTRY *self, FILE *fh)
+OFFENTRY_print(OFFENTRY *self, FILE *fh)
 /********************************************************
  * Print a human readable representation of *self.
  */
@@ -142,16 +142,16 @@ LOGENTRY_print(LOGENTRY *self, FILE *fh)
 }
 
 int
-LOGENTRY_map_addr(LOGENTRY *self, MAP *h_rtnMap)
+OFFENTRY_map_addr(OFFENTRY *self, MAP *h_rtnMap)
 /********************************************************
- * Create a map of LOGENTRY objects with composite
+ * Create a map of OFFENTRY objects with composite
  * counts by address.
  */
 {
-   LOGENTRY *e= MAP_findStrItem(h_rtnMap, self->addr);
+   OFFENTRY *e= MAP_findStrItem(h_rtnMap, self->addr);
 
    if(!e) {
-      LOGENTRY_addr_create(e, self->addr);
+      OFFENTRY_addr_create(e, self->addr);
       assert(e);
       MAP_addStrKey(h_rtnMap, e->addr, e);
    }
@@ -161,7 +161,7 @@ LOGENTRY_map_addr(LOGENTRY *self, MAP *h_rtnMap)
 }
 
 int
-LOGENTRY_offenseCount(LOGENTRY *self, unsigned *h_sum)
+OFFENTRY_offenseCount(OFFENTRY *self, unsigned *h_sum)
 /********************************************************
  * Get a count of all offenses for this entry.
  */

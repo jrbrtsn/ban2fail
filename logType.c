@@ -162,9 +162,10 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          ez_closedir(dir);
       }
 
+      /* Sort file names to a "natural" order */
       PTRVEC_sort(&fname_vec, cmp_pvsort);
 
-      /* Now scan files in lexigraphical order */
+      /* Now scan files in fname_vec */
       char *log_fname;
       while((log_fname= PTRVEC_remHead(&fname_vec))) {
 
@@ -190,7 +191,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
             ez_fclose(fh);
          }
 
-         if(G.flags & GLB_LONG_LISTING_FLG) {
+         if(G.flags & GLB_LONG_LISTING_MASK) {
             ez_fprintf(G.rpt.fh, "Scanning \"%s\"... ", log_fname);
             fflush(G.rpt.fh);
          }
@@ -204,13 +205,17 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          }
          LOGFILE *f;
 
-         if(!access(CacheFname, F_OK)) {
+         /* Use the cache, if available */
+         if(!(G.flags & GLB_NO_CACHE_FLG) &&
+            !access(CacheFname, F_OK))
+         {
 
             /* Construct object from cache file */
             LOGFILE_cache_create(f, CacheFname);
             assert(f);
             LOGFILE_set_logFilePath(f, log_fname);
-         } else {
+
+         } else { /* Scan the log file, write to new cache */
 
             if(access(CacheDname, F_OK)) {
                ez_mkdir(CacheDname, 0770);
@@ -220,8 +225,12 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
             LOGFILE_log_create(f, proto, log_fname);
             assert(f);
             LOGFILE_set_logFilePath(f, log_fname);
-            if(LOGFILE_writeCache(f, CacheFname))
-               assert(0);
+            if(!(G.flags & GLB_NO_CACHE_FLG) &&
+               LOGFILE_writeCache(f, CacheFname))
+            {
+               eprintf("FATAL: write to cache failed.");
+               exit(EXIT_FAILURE);
+            }
          }
          assert(f);
 
@@ -231,7 +240,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          LOGFILE_offenseCount(f, &nOffFound);
          LOGFILE_addressCount(f, &nAddrFound);
 
-         if(G.flags & GLB_LONG_LISTING_FLG) {
+         if(G.flags & GLB_LONG_LISTING_MASK) {
             ez_fprintf(G.rpt.fh, "found %u offenses (%u addresses)\n", nOffFound, nAddrFound);
             fflush(G.rpt.fh);
          }
@@ -273,7 +282,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
    LOGTYPE_offenseCount(self, &nOffFound);
    nAddrFound= LOGTYPE_addressCount(self);
 
-   if(G.flags & GLB_LONG_LISTING_FLG) {
+   if(G.flags & GLB_LONG_LISTING_MASK) {
       ez_fprintf(G.rpt.fh, ">>>> Found %u offenses (%u addresses) for %s/%s*\n"
             , nOffFound
             , nAddrFound
@@ -282,6 +291,8 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
             );
       fflush(G.rpt.fh);
    }
+
+   // TODO: AddrRPT
 
    rtn= self;
 abort:
@@ -446,7 +457,7 @@ LOGTYPE_print(LOGTYPE *self, FILE *fh)
 int
 LOGTYPE_map_addr(LOGTYPE *self, MAP *h_rtnMap)
 /********************************************************
- * Create a map of LOGENTRY objects with composite
+ * Create a map of OFFENTRY objects with composite
  * counts by address.
  */
 {
@@ -483,6 +494,6 @@ LOGTYPE_addressCount(LOGTYPE *self)
    unsigned nFound= MAP_numItems(&smap);
    
    /* Cleanup for next time */
-   MAP_clearAndDestroy(&smap, (void*(*)(void*))LOGENTRY_destructor);
+   MAP_clearAndDestroy(&smap, (void*(*)(void*))OFFENTRY_destructor);
    return nFound;
 }

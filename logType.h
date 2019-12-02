@@ -95,7 +95,7 @@ LOGTYPE_print(LOGTYPE *self, FILE *fh);
 int
 LOGTYPE_map_addr(LOGTYPE *self, MAP *h_rtnMap);
 /********************************************************
- * Create a map of LOGENTRY objects with composite
+ * Create a map of OFFENTRY objects with composite
  * counts by address.
  */
 

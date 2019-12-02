@@ -65,7 +65,7 @@ void *PTRVEC_destructor (PTRVEC * self);
  */
 
 #define PTRVEC_destroy(self) \
-  {if(PTRVEC_destructor(s)) {free(s);}}
+  {if(PTRVEC_destructor(self)) {free(self);}}
 
 void *PTRVEC_addHead (PTRVEC * self, void *ptr);
 /***********************************************

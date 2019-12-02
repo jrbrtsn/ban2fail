@@ -16,8 +16,8 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-#ifndef LOGENTRY_H
-#define LOGENTRY_H
+#ifndef OFFENTRY_H
+#define OFFENTRY_H
 
 #include <stdio.h>
 #include <time.h>
@@ -26,7 +26,7 @@
 #include "pdns.h"
 
 /* One of these for each offense found in a log file */
-typedef struct _LOGENTRY {
+typedef struct _OFFENTRY {
    unsigned logfile_ndx;
    char addr[46],
         cntry[3];
@@ -38,71 +38,71 @@ typedef struct _LOGENTRY {
       char *name;
    } dns;
    
-} LOGENTRY;
+} OFFENTRY;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define LOGENTRY_addr_create(p, addr) \
-  ((p)=(LOGENTRY_addr_constructor((p)=malloc(sizeof(LOGENTRY)), addr) ? (p) : ( p ? realloc(LOGENTRY_destructor(p),0) : 0 )))
-LOGENTRY*
-LOGENTRY_addr_constructor(LOGENTRY *self, const char *addr);
+#define OFFENTRY_addr_create(p, addr) \
+  ((p)=(OFFENTRY_addr_constructor((p)=malloc(sizeof(OFFENTRY)), addr) ? (p) : ( p ? realloc(OFFENTRY_destructor(p),0) : 0 )))
+OFFENTRY*
+OFFENTRY_addr_constructor(OFFENTRY *self, const char *addr);
 /********************************************************
  * Prepare for use from an address found in a log entry.
  */
 
-#define LOGENTRY_cache_create(p, cacheFileEntry) \
-  ((p)=(LOGENTRY_cache_constructor((p)=malloc(sizeof(LOGENTRY)), cacheFileEntry) ? (p) : ( p ? realloc(LOGENTRY_destructor(p),0) : 0 )))
-LOGENTRY*
-LOGENTRY_cache_constructor(LOGENTRY *self, const char *cacheFileEntry);
+#define OFFENTRY_cache_create(p, cacheFileEntry) \
+  ((p)=(OFFENTRY_cache_constructor((p)=malloc(sizeof(OFFENTRY)), cacheFileEntry) ? (p) : ( p ? realloc(OFFENTRY_destructor(p),0) : 0 )))
+OFFENTRY*
+OFFENTRY_cache_constructor(OFFENTRY *self, const char *cacheFileEntry);
 /********************************************************
  * Prepare for use with entry from cache file.
  */
 
-#define LOGENTRY_destroy(s) \
-  {if(LOGENTRY_destructor(s)) {free(s); (s)=0;}}
+#define OFFENTRY_destroy(s) \
+  {if(OFFENTRY_destructor(s)) {free(s); (s)=0;}}
 void*
-LOGENTRY_destructor(LOGENTRY *self);
+OFFENTRY_destructor(OFFENTRY *self);
 /********************************************************
  * Free resources.
  */
 
 void
-LOGENTRY_register(LOGENTRY *self);
+OFFENTRY_register(OFFENTRY *self);
 /********************************************************
  * Register the current failure try.
  */
 
 #if 0
 int
-LOGENTRY_is_blocked_country(const LOGENTRY *self);
+OFFENTRY_is_blocked_country(const OFFENTRY *self);
 /********************************************************
  * Return 1 if the country is blocked, or 0.
  */
 #endif
 
 int
-LOGENTRY_cacheWrite(LOGENTRY *self, FILE *fh);
+OFFENTRY_cacheWrite(OFFENTRY *self, FILE *fh);
 /********************************************************
  * Write to the cache file in a form we can read later.
  */
 
 int
-LOGENTRY_print(LOGENTRY *self, FILE *fh);
+OFFENTRY_print(OFFENTRY *self, FILE *fh);
 /********************************************************
  * Print a human readable representation of *self.
  */
 
 int
-LOGENTRY_map_addr(LOGENTRY *self, MAP *h_rtnMap);
+OFFENTRY_map_addr(OFFENTRY *self, MAP *h_rtnMap);
 /********************************************************
- * Create a map of LOGENTRY objects with composite
+ * Create a map of OFFENTRY objects with composite
  * counts by address.
  */
 
 int
-LOGENTRY_offenseCount(LOGENTRY *self, unsigned *h_sum);
+OFFENTRY_offenseCount(OFFENTRY *self, unsigned *h_sum);
 /********************************************************
  * Get a count of all offenses for this entry.
  */

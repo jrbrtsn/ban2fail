@@ -5,13 +5,13 @@ versions := debug release
 cc_exe := ban2fail
 install_dir := /usr/local/bin
 
-
 ########################################
 # Set up sources & libraries here.     #
 ########################################
 
 ifeq ($(exe), ban2fail)
 src := \
+       addrRpt.c \
        ban2fail.c \
        cfgmap.c \
        cntry.c \

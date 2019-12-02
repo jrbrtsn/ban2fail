@@ -271,8 +271,8 @@ fill_in_missing(char *blocked_addr, MAP *h_rtn_map)
    if( MAP_findStrItem(h_rtn_map, blocked_addr)) return 0;
 
    /* Create a new faux logentry object */
-   LOGENTRY *e;
-   LOGENTRY_addr_create(e, blocked_addr);
+   OFFENTRY *e;
+   OFFENTRY_addr_create(e, blocked_addr);
    assert(e);
 
    /* Place in the return map */

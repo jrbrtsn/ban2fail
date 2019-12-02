@@ -23,6 +23,7 @@
 #include <sys/file.h>
 #include <unistd.h>
 
+#include "addrRpt.h"
 #include "ban2fail.h"
 #include "cntry.h"
 #include "ez_libanl.h"
@@ -62,10 +63,11 @@ struct initInfo {
 /*================= Forward declarations ===========================*/
 /*==================================================================*/
 
+static int addrRpt_serial_qsort(const void *p1, const void *p2);
 static int cntryStat_count_qsort(const void *p1, const void *p2);
 static int configure(CFGMAP *h_cfgmap, const char *pfix);
 static int logentry_count_qsort(const void *p1, const void *p2);
-static int map_byCountries(LOGENTRY *e, MAP *h_map);
+static int map_byCountries(OFFENTRY *e, MAP *h_map);
 static int stub_init(CFGMAP *map, char *symStr);
 
 
@@ -115,7 +117,7 @@ static struct {
       PAGER_RUNNING_FLG= 1<<31
    } flags;
 
-   /* LOGENTRY object indexed by ip address */
+   /* OFFENTRY object indexed by ip address */
    MAP addr2logEntry_map;
 
    /* CFGMAP containing our configuration information */
@@ -127,10 +129,10 @@ static struct {
    PTRVEC toBlock_vec,
           toUnblock_vec;
 
-   /* Used to place LOGENTRY address objects into linear
+   /* Used to place OFFENTRY address objects into linear
     * access container.
     */
-   LOGENTRY **lePtrArr;
+   OFFENTRY **lePtrArr;
 
 } S;
 
@@ -159,7 +161,7 @@ main(int argc, char **argv)
    /* Prepare static data */
    // global
    MAP_constructor(&G.logType_map, 10, 10);
-   PTRVEC_constructor(&G.rpt.addr_vec, 100);
+   MAP_constructor(&G.rpt.AddrRPT_map, 10, 10);
 
    // local
    MAP_constructor(&S.addr2logEntry_map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
@@ -263,8 +265,23 @@ main(int argc, char **argv)
 
       /* Pick up addresses on command line */
       for(; optind < argc; ++optind) {
-         // TODO: instantiate address report objects
-         eprintf("arg %d= \"%s\"", optind, argv[optind]);
+
+         AddrRPT *ar;
+         const char *addr= argv[optind];
+
+         /* Skip duplicates */
+         if(MAP_findStrItem(&G.rpt.AddrRPT_map, addr)) continue;
+
+         /* Create a new address report object */
+         AddrRPT_addr_create(ar, addr);
+         assert(ar);
+
+         /* Place it in global map */
+         MAP_addStrKey(&G.rpt.AddrRPT_map, addr, ar);
+
+         /* Don't touch the cache */
+         G.flags |= GLB_NO_CACHE_FLG;
+
       }
 
 
@@ -289,7 +306,8 @@ main(int argc, char **argv)
    }
 
    /* Obtain a file lock to protect cache files */
-   { /*===========================================================*/
+   /*===========================================================*/
+   if(!(G.flags & GLB_NO_CACHE_FLG)) {
       /* Make sure the file exists by open()'ing */
       lock_fd= open(G.lockPath, O_CREAT|O_WRONLY|O_CLOEXEC, 0640);
       if(-1 == lock_fd) {
@@ -311,7 +329,7 @@ main(int argc, char **argv)
    /* if stdout is a tty, and listing is likely
     * to be long, then use $PAGER.
     */
-   if(G.flags & GLB_LONG_LISTING_FLG && isatty(fileno(G.rpt.fh))) {
+   if(G.flags & GLB_LONG_LISTING_MASK && isatty(fileno(G.rpt.fh))) {
       S.flags |= PAGER_RUNNING_FLG;
       G.rpt.fh= pager_open();
    }
@@ -329,7 +347,7 @@ main(int argc, char **argv)
          ez_mkdir(G.cacheDir, 0700);
       }
 
-      if(G.flags & GLB_LONG_LISTING_FLG) {
+      if(G.flags & GLB_LONG_LISTING_MASK) {
          ez_fprintf(G.rpt.fh, "=============== ban2fail v%d.%d.%d =============\n"
                , G.version.major
                , G.version.minor
@@ -392,13 +410,15 @@ main(int argc, char **argv)
 
       /* We're done with disk I/O, so release lock */
       /*-----------------------------------------------------------------------*/
-      flock(lock_fd, LOCK_UN);
-      ez_close(lock_fd);
-      lock_fd= -1;
+      if(-1 != lock_fd) {
+         flock(lock_fd, LOCK_UN);
+         ez_close(lock_fd);
+         lock_fd= -1;
+      }
 
       /* Processing only for long listings */
       /*-----------------------------------------------------------------------*/
-      if(G.flags & GLB_LONG_LISTING_FLG) {
+      if(G.flags & GLB_LONG_LISTING_MASK) {
          MAP map;
          MAP_constructor(&map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
 
@@ -419,17 +439,17 @@ main(int argc, char **argv)
          fflush(G.rpt.fh);
 
          /* Clean up map used for counting */
-         MAP_clearAndDestroy(&map, (void*(*)(void*))LOGENTRY_destructor);
+         MAP_clearAndDestroy(&map, (void*(*)(void*))OFFENTRY_destructor);
          MAP_destructor(&map);
       }
-   } /* End of cache and logfile-specific LOGENTRY objects */
+   } /* End of cache and logfile-specific OFFENTRY objects */
 
-   /* Now get a map of LOGENTRY objects that have combined counts.
+   /* Now get a map of OFFENTRY objects that have combined counts.
     * Perform all remaining processing and reporting.
     */
    { /*=======================================================================*/
 
-      /* List by address. Make a addr_map of LOGENTRY objects with composite counts */
+      /* List by address. Make a addr_map of OFFENTRY objects with composite counts */
       MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_map_addr, &S.addr2logEntry_map);
 
       /* Pick up remaining blocked addresses */
@@ -442,7 +462,7 @@ main(int argc, char **argv)
       assert(S.lePtrArr);
 
       MAP_fetchAllItems(&S.addr2logEntry_map, (void**)S.lePtrArr);
-      qsort(S.lePtrArr, nItems, sizeof(LOGENTRY*), logentry_count_qsort);
+      qsort(S.lePtrArr, nItems, sizeof(OFFENTRY*), logentry_count_qsort);
 
       /* Special processing for DNS lookups */
       if(G.flags & GLB_DNS_LOOKUP_FLG) {
@@ -457,11 +477,11 @@ main(int argc, char **argv)
          ez_fprintf(G.rpt.fh, "\t==> Completed %d of %u lookups in %.1f seconds\n", rc, nItems, (double)ms/1000.);
       }
 
-      /* Process each LOGENTRY item */
+      /* Process each OFFENTRY item */
       for(unsigned i= 0; i < nItems; ++i) {
          int flags=0;
 
-         LOGENTRY *e= S.lePtrArr[i];
+         OFFENTRY *e= S.lePtrArr[i];
 
          if(IPTABLES_is_currently_blocked(e->addr))
             flags |= BLOCKED_FLG;
@@ -515,7 +535,7 @@ main(int argc, char **argv)
                   );
          }
 
-      } /*--- End of LOGENTRY processing ---*/
+      } /*--- End of OFFENTRY processing ---*/
 
       unsigned currBlocked= MAP_numItems(&S.addr2logEntry_map);
 
@@ -597,6 +617,18 @@ main(int argc, char **argv)
 
    }
 
+   /* Print out address reports */
+   { /*==========================================================*/
+      unsigned nItems= MAP_numItems(&G.rpt.AddrRPT_map);
+      AddrRPT *arArr[nItems];
+
+      MAP_fetchAllItems(&G.rpt.AddrRPT_map, (void**)arArr);
+      qsort(arArr, nItems, sizeof(AddrRPT*), addrRpt_serial_qsort);
+      for(unsigned i= 0; i < nItems; ++i) {
+         AddrRPT_print(arArr[i], G.rpt.fh);
+      }
+   }
+
    fflush(G.rpt.fh);
 
    /* Wait for pager to finish, if it is running */
@@ -625,8 +657,8 @@ logentry_count_qsort(const void *p1, const void *p2)
  * qsort functor puts large counts on top.
  */
 {
-   const LOGENTRY *le1= *(const LOGENTRY *const*)p1,
-                  *le2= *(const LOGENTRY *const*)p2;
+   const OFFENTRY *le1= *(const OFFENTRY *const*)p1,
+                  *le2= *(const OFFENTRY *const*)p2;
 
    if(le1->count > le2->count) return -1;
    if(le1->count < le2->count) return 1;
@@ -645,6 +677,20 @@ cntryStat_count_qsort(const void *p1, const void *p2)
 
    if(cs1->nAddr > cs2->nAddr) return -1;
    if(cs1->nAddr < cs2->nAddr) return 1;
+   return 0;
+}
+
+static int
+addrRpt_serial_qsort(const void *p1, const void *p2)
+/***************************************************************
+ * qsort functor sorts by serial number, low to high
+ */
+{
+   const AddrRPT *ar1= *(const AddrRPT *const*)p1,
+                 *ar2= *(const AddrRPT *const*)p2;
+
+   if(ar1->serial < ar2->serial) return -1;
+   if(ar1->serial > ar2->serial) return 1;
    return 0;
 }
 
@@ -699,7 +745,7 @@ stub_init(CFGMAP *map, char *symStr)
 #endif
 
 static int
-map_byCountries(LOGENTRY *e, MAP *h_map)
+map_byCountries(OFFENTRY *e, MAP *h_map)
 /**************************************************************
  * Generate a "by country" map of cntryStat objects.
  */

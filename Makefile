@@ -5,6 +5,10 @@ versions := debug release
 cc_exe := ban2fail
 install_dir := /usr/local/bin
 
+# Keep the makefile up to date
+Makefile : Jmakefile
+	jmake makefile
+
 
 ########################################
 # Set up sources & libraries here.     #
@@ -21,11 +25,11 @@ src := \
        ez_libz.c \
        iptables.c \
        logType.c \
-       logEntry.c \
        logFile.c \
        map.c \
        maxoff.c \
        msgqueue.c \
+       offEntry.c \
        pdns.c \
        ptrvec.c \
        str.c \

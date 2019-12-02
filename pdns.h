@@ -62,15 +62,15 @@ extern "C" {
 #endif
 
 /* Fix recursive #include dependency */
-struct _LOGENTRY;
+struct _OFFENTRY;
 
 int
-PDNS_lookup(struct _LOGENTRY *lePtrArr[], unsigned nItems, unsigned timeout_ms);
+PDNS_lookup(struct _OFFENTRY *lePtrArr[], unsigned nItems, unsigned timeout_ms);
 /**************************************************************
- * Perform parallel DNS reverse lookups on all LOGENTRY objects
+ * Perform parallel DNS reverse lookups on all OFFENTRY objects
  * referenced in lePtrArr until finished, or timeout_ms has lapsed.
  *
- * lePtrArr:   array of pointers to LOGENTRY objects
+ * lePtrArr:   array of pointers to OFFENTRY objects
  * nItems:  length of array
  * timeout_ms: maximum amount of time to spend performing lookups.
  *
