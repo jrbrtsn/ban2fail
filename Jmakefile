@@ -2,7 +2,7 @@ baseDir := ~
 libsDir := $(baseDir)/libs
 projectName := ban2fail
 versions := debug release
-cc_exe := ban2fail
+cc_exe := ban2fail fsckdns
 install_dir := /usr/local/bin
 
 ########################################
@@ -32,6 +32,16 @@ src := \
        util.c \
 
    libs := z crypto GeoIP pthread
+endif
+
+ifeq ($(exe), fsckdns)
+src := \
+       ez_libc.c \
+       fsckdns.c \
+       str.c \
+       util.c \
+
+#   libs := z crypto GeoIP pthread
 endif
 
 ########################################

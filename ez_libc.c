@@ -133,6 +133,22 @@ int _ez_fclose (
 }
 
 /***************************************************/
+int _ez_fflush (
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      FILE *stream
+      )
+{
+   int rtn= fflush (stream);
+   if (EOF == rtn) {
+      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fflush() failed");
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
 size_t _ez_fread (
       const char *fileName,
       int lineNo,

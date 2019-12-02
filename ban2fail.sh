@@ -37,7 +37,12 @@ while true; do
 
    echo "Monitoring: $MON_FNAMES"
 
-   while read FILE OPS; do
+   # Launch inotifywait in the background outputting to fd #3
+   exec 3< <(exec $INOTIFYWAIT -m $MON_FNAMES)
+   INOTIFYWAIT_PID=$!
+
+   # Read the output of inotifywait
+   while read -u 3 FILE OPS; do
 
       case "$OPS" in
          MOVE_SELF) break;;
@@ -75,12 +80,19 @@ while true; do
       echo "Running $BAN2FAIL"
 
       # Here is where we check for offenses.
-      # If ban2fail failes it is probably because logrotated
+      # If ban2fail fails it is probably because logrotated
       # is managing the log files, so bail out...
       RAN_NS=$(date +%s%N)
       $TIME $BAN2FAIL || break
 
-   done < <($INOTIFYWAIT -m $MON_FNAMES)
+   done
+
+   # Shut down inotifywait
+   if ps $INOTIFYWAIT_PID &>/dev/null; then
+      kill $INOTIFYWAIT_PID
+      wait
+   fi
+   exec 3<&-
 
    echo 'Exiting main loop'
    # Pause to let things settle down

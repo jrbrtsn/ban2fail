@@ -102,6 +102,15 @@ int _ez_fclose (
       FILE *stream
       );
 
+#define ez_fflush(stream) \
+         _ez_fflush(__FILE__, __LINE__, __FUNCTION__, stream)
+int _ez_fflush (
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      FILE *stream
+      );
+
 #define ez_fread(ptr, size, nmemb, stream) \
          _ez_fread(__FILE__, __LINE__, __FUNCTION__, ptr, size, nmemb, stream)
 size_t _ez_fread(
@@ -237,7 +246,6 @@ int _ez_stat (
       struct stat *statbuf
       );
 
-// FIXME: xxxdir() function should be in ez_unistd.h
 #define ez_mkdir(pathname, mode) \
          _ez_mkdir(__FILE__, __LINE__, __FUNCTION__, pathname, mode)
 int _ez_mkdir (
