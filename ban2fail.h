@@ -53,7 +53,7 @@
 
 /* Where to find stuff */
 #define CONFIGFILE "/etc/ban2fail/ban2fail.cfg"
-#define LOCKPATH "/run/lock/ban2fail"
+#define LOCKDIR "/run/lock/ban2fail"
 #define CACHEDIR "/var/cache/ban2fail"
 #define IPTABLES "/usr/sbin/iptables" 
 #define IP6TABLES "/usr/sbin/ip6tables" 
@@ -70,6 +70,7 @@ enum GlobalFlg_enum {
    GLB_DNS_LOOKUP_FLG         =1<<6,
    GLB_DNS_FILTER_BAD_FLG     =1<<7,
    GLB_FLUSH_CACHE_FLG        =1<<8,
+   GLB_CMDLINE_ADDR_FLG       =1<<9,
    GLB_LONG_LISTING_MASK = GLB_LIST_CNTRY_FLG|GLB_LIST_ADDR_FLG
 };
 
@@ -81,7 +82,7 @@ extern struct Global {
    MAP logType_map;
 
    char *cacheDir,
-        *lockPath;
+        *lockDir;
 
    struct {
       FILE *fh;

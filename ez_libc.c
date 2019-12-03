@@ -18,6 +18,7 @@
  ***************************************************************************/
 #define _GNU_SOURCE
 #include <stdlib.h>
+#include <sys/file.h>
 #include <unistd.h>
 
 #include "util.h"
@@ -470,5 +471,79 @@ int _ez_getnameinfo(
    errno= rtn;
    _sys_eprintf(gai_strerror, fileName, lineNo, funcName, "getnameinfo() failed", rtn);
    abort();
+}
+
+/***************************************************/
+int _ez_flock (
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      int fd,
+      int operation
+      )
+{
+   errno= 0;
+   int rtn= flock (fd, operation);
+   if(0 == rtn) return 0;
+
+   switch(errno) {
+      case EINTR:
+      case EWOULDBLOCK:
+         return rtn;
+         break;
+   }
+
+   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "flock() failed");
+   abort();
+
+}
+
+/***************************************************/
+int _ez_open(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      const char *pathname,
+      int flags,
+      mode_t mode
+      )
+{
+   errno= 0;
+   int rtn= open (pathname, flags, mode);
+   if(0 <= rtn) return rtn;
+
+   switch(errno) {
+      case EINTR:
+      case EWOULDBLOCK:
+         return rtn;
+         break;
+   }
+
+   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "open(\"%s\") failed", pathname);
+   abort();
+
+}
+
+int _ez_access(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      const char *pathname,
+      int mode
+      )
+{
+   errno= 0;
+   int rtn= access (pathname, mode);
+   if(0 == rtn) return rtn;
+
+   switch(errno) {
+      case ENOENT:
+         return rtn;
+         break;
+   }
+
+   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "access(\"%s\") failed", pathname);
+   abort();
+
 }
 

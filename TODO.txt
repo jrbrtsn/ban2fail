@@ -1,2 +1,1 @@
 * Parallelize log file scanning
-* Reverse DNS lookup option for reports

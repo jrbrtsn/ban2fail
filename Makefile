@@ -2,13 +2,8 @@ baseDir := ~
 libsDir := $(baseDir)/libs
 projectName := ban2fail
 versions := debug release
-cc_exe := ban2fail
+cc_exe := ban2fail fsckdns
 install_dir := /usr/local/bin
-
-# Keep the makefile up to date
-Makefile : Jmakefile
-	jmake makefile
-
 
 ########################################
 # Set up sources & libraries here.     #
@@ -16,12 +11,15 @@ Makefile : Jmakefile
 
 ifeq ($(exe), ban2fail)
 src := \
+       addrRpt.c \
        ban2fail.c \
        cfgmap.c \
        cntry.c \
+       dynstack.c \
        es.c \
        ez_es.c \
        ez_libc.c \
+       ez_libdb.c \
        ez_libz.c \
        iptables.c \
        logType.c \
@@ -29,13 +27,24 @@ src := \
        map.c \
        maxoff.c \
        msgqueue.c \
+       obsvTpl.c \
        offEntry.c \
        pdns.c \
        ptrvec.c \
        str.c \
        util.c \
 
-   libs := z crypto GeoIP pthread
+   libs := z crypto GeoIP pthread db
+endif
+
+ifeq ($(exe), fsckdns)
+src := \
+       ez_libc.c \
+       fsckdns.c \
+       str.c \
+       util.c \
+
+#   libs := z crypto GeoIP pthread
 endif
 
 ########################################
@@ -59,11 +68,15 @@ ifndef version
 all :  debug release
 debug  :
 	@$(MAKE) version=debug exe=ban2fail mainType=CC --no-builtin-rules -f $(makefile) --no-print-directory
+	@$(MAKE) version=debug exe=fsckdns mainType=CC --no-builtin-rules -f $(makefile) --no-print-directory
 release  :
 	@$(MAKE) version=release exe=ban2fail mainType=CC --no-builtin-rules -f $(makefile) --no-print-directory
+	@$(MAKE) version=release exe=fsckdns mainType=CC --no-builtin-rules -f $(makefile) --no-print-directory
 install : release
 	@strip release/ban2fail
 	@[ $(install_dir)_foo = _foo ] || cp release/ban2fail $(install_dir)/
+	@strip release/fsckdns
+	@[ $(install_dir)_foo = _foo ] || cp release/fsckdns $(install_dir)/
 	@[ -e install.sh ] && INSTALLDIR=$(install_dir) INSTALLTYPE=$(install_type) ./install.sh
 uninstall :
 clean :

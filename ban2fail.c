@@ -84,12 +84,12 @@ static const struct bitTuple GlobalFlagBitTuples[]= {
 
 struct Global G= {
    .cacheDir= CACHEDIR,
-   .lockPath= LOCKPATH,
+   .lockDir= LOCKDIR,
 
    .version= {
       .major= 0,
       .minor= 13,
-      .patch= 2
+      .patch= 3
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -134,7 +134,16 @@ static struct {
     */
    OFFENTRY **lePtrArr;
 
-} S;
+   /* Avoid multiple instances of filename buffers */
+   char fnameBuf[PATH_MAX];
+
+   int cacheLock_fd,
+       iptablesLock_fd;
+
+} S= {
+   .cacheLock_fd= -1,
+   .iptablesLock_fd= -1
+};
 
 /*==================================================================*/
 /*======================== main() ==================================*/
@@ -153,8 +162,8 @@ main(int argc, char **argv)
  * Program execution begins here.
  */
 {
-   int rtn= EXIT_FAILURE,
-       lock_fd= -1;
+
+   int rtn= EXIT_FAILURE;
 
    char *confFile= CONFIGFILE;
 
@@ -198,7 +207,7 @@ main(int argc, char **argv)
                break;
 
             case 'a':
-               G.flags |= GLB_LIST_ADDR_FLG;
+               G.flags |= GLB_LIST_ADDR_FLG|GLB_DONT_IPTABLE_FLG;
                if(optarg) {
                   if(*optarg == '+') {
                      G.flags |= GLB_DNS_LOOKUP_FLG;
@@ -210,7 +219,7 @@ main(int argc, char **argv)
                break;
 
             case 'c':
-               G.flags |= GLB_LIST_CNTRY_FLG;
+               G.flags |= GLB_LIST_CNTRY_FLG|GLB_DONT_IPTABLE_FLG;
                break;
 
             case 'F':
@@ -218,13 +227,13 @@ main(int argc, char **argv)
                break;
 
             case 's':
-               G.flags |= GLB_LIST_SUMMARY_FLG;
+               G.flags |= GLB_LIST_SUMMARY_FLG|GLB_DONT_IPTABLE_FLG;
                break;
 
             case 't':
                G.flags |= GLB_DONT_IPTABLE_FLG;
                G.cacheDir= CACHEDIR "-test";
-               G.lockPath= LOCKPATH "-test";
+               G.lockDir= LOCKDIR "-test";
                confFile= optarg;
                break;
 
@@ -233,7 +242,7 @@ main(int argc, char **argv)
                break;
 
             case PRINT_LOGFILE_NAMES_ENUM:
-               G.flags |= GLB_PRINT_LOGFILE_NAMES_FLG;
+               G.flags |= GLB_PRINT_LOGFILE_NAMES_FLG|GLB_DONT_IPTABLE_FLG;
                break;
 
             case VERSION_OPT_ENUM:
@@ -284,6 +293,8 @@ main(int argc, char **argv)
          /* Place it in global map */
          MAP_addStrKey(&G.rpt.AddrRPT_map, addr, ar);
 
+         G.flags |= GLB_DONT_IPTABLE_FLG;
+
       }
 
 
@@ -310,19 +321,17 @@ main(int argc, char **argv)
    /* Obtain a file lock to protect cache files */
    /*===========================================================*/
    {
+      if(-1 == ez_access(G.lockDir, F_OK))
+         ez_mkdir(G.lockDir, 0750);
+
+      snprintf(S.fnameBuf, sizeof(S.fnameBuf), "%s/cache", G.lockDir);
       /* Make sure the file exists by open()'ing */
-      lock_fd= open(G.lockPath, O_CREAT|O_WRONLY|O_CLOEXEC, 0640);
-      if(-1 == lock_fd) {
-         sys_eprintf("ERROR: open(\"%s\") failed");
-         goto abort;
-      }
+      S.cacheLock_fd= ez_open(S.fnameBuf, O_CREAT|O_WRONLY|O_CLOEXEC, 0640);
+      assert(-1 != S.cacheLock_fd);
 
       /* Let's get a exclusive lock */
-      int rc= flock(lock_fd, LOCK_EX|LOCK_NB);
-      if(-1 == rc) {
-         sys_eprintf("ERROR: flock(\"%s\") failed", G.lockPath);
-         goto abort;
-      }
+      // TODO: set SIGALRM to knock us out of blocked wait?
+      int rc= ez_flock(S.cacheLock_fd, LOCK_EX);
    }
 
    /* Default sending listing to stdout */
@@ -349,7 +358,7 @@ main(int argc, char **argv)
          /* errno will be set if access() fails */
          errno= 0;
 
-         ez_mkdir(G.cacheDir, 0700);
+         ez_mkdir(G.cacheDir, 0750);
       }
 
       if(G.flags & GLB_LONG_LISTING_MASK) {
@@ -403,11 +412,10 @@ main(int argc, char **argv)
                continue;
 
             /* Make the path with filename */
-            static char pathBuf[PATH_MAX];
-            snprintf(pathBuf, sizeof(pathBuf), "%s/%s", G.cacheDir, entry->d_name);
+            snprintf(S.fnameBuf, sizeof(S.fnameBuf), "%s/%s", G.cacheDir, entry->d_name);
 
             /* Remove unused directory & contents. */
-            ez_rmdir_recursive(pathBuf);
+            ez_rmdir_recursive(S.fnameBuf);
 
          }
          ez_closedir(dir);
@@ -415,10 +423,10 @@ main(int argc, char **argv)
 
       /* We're done with disk I/O, so release lock */
       /*-----------------------------------------------------------------------*/
-      if(-1 != lock_fd) {
-         flock(lock_fd, LOCK_UN);
-         ez_close(lock_fd);
-         lock_fd= -1;
+      if(-1 != S.cacheLock_fd) {
+         ez_flock(S.cacheLock_fd, LOCK_UN);
+         ez_close(S.cacheLock_fd);
+         S.cacheLock_fd= -1;
       }
 
       /* Processing only for long listings */
@@ -590,6 +598,15 @@ main(int argc, char **argv)
 
       if(!(G.flags & GLB_DONT_IPTABLE_FLG)) {
 
+         if(n2Block || n2Unblock) {
+            snprintf(S.fnameBuf, sizeof(S.fnameBuf), "%s/iptables", G.lockDir);
+            /* Make sure the file exists by open()'ing */
+            S.iptablesLock_fd= ez_open(S.fnameBuf, O_CREAT|O_WRONLY|O_CLOEXEC, 0640);
+            assert(-1 != S.iptablesLock_fd);
+            /* Get an exclusive lock on the lockfile */
+            ez_flock(S.iptablesLock_fd, LOCK_EX);
+         }
+
          if(n2Block) {
 
             if(IPTABLES_block_addresses(&S.toBlock_vec, 10)) {
@@ -606,6 +623,13 @@ main(int argc, char **argv)
                goto abort;
             }
             ez_fprintf(G.rpt.fh, "Unblocked %u hosts\n", n2Unblock);
+         }
+
+         /* Release the lock */
+         if(-1 != S.iptablesLock_fd) {
+            ez_flock(S.iptablesLock_fd, LOCK_UN);
+            ez_close(S.iptablesLock_fd);
+            S.iptablesLock_fd= -1;
          }
 
       } else {
@@ -644,9 +668,14 @@ abort:
       ez_pclose(G.rpt.fh);
 
    /* Make sure lock file is unlocked */
-   if(-1 != lock_fd) {
-      flock(lock_fd, LOCK_UN);
-      ez_close(lock_fd);
+   if(-1 != S.cacheLock_fd) {
+      ez_flock(S.cacheLock_fd, LOCK_UN);
+      ez_close(S.cacheLock_fd);
+   }
+
+   if(-1 != S.iptablesLock_fd) {
+      ez_flock(S.iptablesLock_fd, LOCK_UN);
+      ez_close(S.iptablesLock_fd);
    }
    return rtn;
 }

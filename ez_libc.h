@@ -41,6 +41,27 @@ glibc calls with boilerplate error handling.
 extern "C" {
 #endif
 
+#define ez_access(pathname, mode) \
+   _ez_access(__FILE__, __LINE__, __FUNCTION__, pathname, mode)
+int _ez_access(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      const char *pathname,
+      int mode
+      );
+
+#define ez_open(pathname, flags, mode) \
+   _ez_open(__FILE__, __LINE__, __FUNCTION__, pathname, flags, mode)
+int _ez_open(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      const char *pathname,
+      int flags,
+      mode_t mode
+      );
+
 
 #define ez_fputs(s, stream) \
    _ez_fputs(__FILE__, __LINE__, __FUNCTION__, s, stream)
@@ -309,6 +330,17 @@ int _ez_getnameinfo(
       socklen_t servlen,
       int flags
       );
+
+#define ez_flock(fd, operation) \
+         _ez_flock(__FILE__, __LINE__, __FUNCTION__, fd, operation)
+int _ez_flock (
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      int fd,
+      int operation
+      );
+
 
 #ifdef __cplusplus
 }
