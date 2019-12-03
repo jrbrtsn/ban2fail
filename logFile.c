@@ -19,6 +19,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <ctype.h>
+#include <db.h>
 #include <errno.h>
 #include <limits.h>
 #include <openssl/md5.h>
@@ -28,19 +29,21 @@
 
 #include "addrRpt.h"
 #include "cntry.h"
-#include "offEntry.h"
-#include "logFile.h"
+#include "dynstack.h"
 #include "ez_libc.h"
+#include "ez_libdb.h"
 #include "ez_libz.h"
+#include "logFile.h"
+#include "obsvTpl.h"
+#include "offEntry.h"
 #include "util.h"
-
-enum {
-   NOFFENSES_CACHED_FLG =1<<0
-};
 
 /*==================================================================*/
 /*=================== LOGFILE ======================================*/
 /*==================================================================*/
+enum {
+   NOFFENSES_CACHED_FLG =1<<0
+};
 
 static void
 common_constructor(LOGFILE *self)
@@ -49,38 +52,85 @@ common_constructor(LOGFILE *self)
  */
 {
    memset(self, 0, sizeof(*self));
-   MAP_constructor(&self->addr2offEntry_map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
+   MAP_constructor(&self->addr.offEntry_map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
+   MAP_constructor(&self->addr.obsvTpl_map, N_ADDRESSES_HINT/BUCKET_DEPTH_HINT, BUCKET_DEPTH_HINT);
 }
 
 LOGFILE*
-LOGFILE_cache_constructor(LOGFILE *self, const char *fname)
+LOGFILE_cache_constructor(
+      LOGFILE *self,
+      const char *cacheFname,
+      const char *logFname
+      )
 /******************************************************************
  * Initialize an instance of a LOGFILE class from a cache file.
  */
 {
    LOGFILE *rtn= NULL;
 
+
    common_constructor(self);
 
-   FILE *fh= ez_fopen(fname, "r");
+   /* Not reentrant! */
+   gzFile log_fh= NULL;
+
+   self->logFname= strdup(logFname);
+
+   /* Open our database, if it exists */
+   DB *db= NULL;
+
+   static char dbFname[PATH_MAX];
+   snprintf(dbFname, sizeof(dbFname), "%s.db", cacheFname);
+   if(0 == access(dbFname, F_OK)) {
+      ez_db_create(&db, NULL, 0);
+      ez_db_open(db, NULL, dbFname, NULL, DB_BTREE, DB_RDONLY, 0664);
+   }
+
+   /* Open the cache file */
+   FILE *cache_fh= ez_fopen(cacheFname, "r");
 
    static char buf[256];
-   while(ez_fgets(buf, sizeof(buf), fh)) {
+   while(ez_fgets(buf, sizeof(buf), cache_fh)) {
       OFFENTRY *e;
       OFFENTRY_cache_create(e, buf);
-      if(!e) goto abort;
-      MAP_addStrKey(&self->addr2offEntry_map, e->addr, e);
+      assert(e);
+      MAP_addStrKey(&self->addr.offEntry_map, e->addr, e);
+
+      AddrRPT *ar= MAP_findStrItem(&G.rpt.AddrRPT_map, e->addr);
+      if(ar && db) {
+         static ObsvTpl otpl;
+         /* Initialize or reset static instance */
+         ObsvTpl_sinit(&otpl, self, e->addr);
+
+         /* May not exist in database */
+         /* Fetch from database */
+         if(0 == ObsvTpl_db_get(&otpl, db)) {
+
+            if(!log_fh)
+               log_fh= ez_gzopen(logFname, "r");
+
+            /* Place observations in ar */
+            ObsvTpl_put_AddrRPT(&otpl, log_fh, ar);
+         }
+      }
+
    }
 
    rtn= self;
 
 abort:
-   if(fh) ez_fclose(fh);
+   if(db) ez_db_close(db, 0);
+   if(log_fh) ez_gzclose(log_fh);
+   if(cache_fh) ez_fclose(cache_fh);
    return rtn;
 }
 
 LOGFILE*
-LOGFILE_log_constructor(LOGFILE *self, const struct logProtoType *h_protoType, const char *fname)
+LOGFILE_log_constructor(
+      LOGFILE *self,
+      const struct logProtoType *h_protoType,
+      const char *logFname
+      )
 /******************************************************************
  * Initialize an instance of a LOGFILE from an actual log file.
  */
@@ -89,17 +139,22 @@ LOGFILE_log_constructor(LOGFILE *self, const struct logProtoType *h_protoType, c
 
    common_constructor(self);
 
+   self->logFname= strdup(logFname);
+
    static char lbuf[1024];
 
    /* Open the log file for reading */
-   gzFile fh= ez_gzopen(fname, "r");
+   gzFile gzfh= ez_gzopen(logFname, "r");
 
    /* Loop through one line at a time */
-   while(ez_gzgets(fh, lbuf, sizeof(lbuf)-1)) {
-      size_t len= strlen(lbuf);
+   while(gzfh) {
+      z_off_t pos= ez_gztell(gzfh);
+      if(!ez_gzgets(gzfh, lbuf, sizeof(lbuf)-1)) break;
+
+      size_t line_len= strlen(lbuf);
       /* Get rid of trailing newline, spaces */
-      while(len && isspace(lbuf[len-1]))
-         lbuf[--len]= '\0';
+      while(line_len && isspace(lbuf[line_len-1]))
+         lbuf[--line_len]= '\0';
 
       /* Search for a match in the targets */
       for(struct target *tg= h_protoType->targetArr; tg->pattern; ++tg) {
@@ -115,26 +170,47 @@ LOGFILE_log_constructor(LOGFILE *self, const struct logProtoType *h_protoType, c
          strncpy(addr, lbuf+matchArr[1].rm_so, sizeof(addr)-1);
          addr[MIN(len, sizeof(addr)-1)]= '\0';
 
-         OFFENTRY *e= MAP_findStrItem(&self->addr2offEntry_map, addr);
+         OFFENTRY *e= MAP_findStrItem(&self->addr.offEntry_map, addr);
          if(!e) {
             OFFENTRY_addr_create(e, addr);
             if(!e) goto abort;
 
-            /* Add to the addr2offEntry_map */
-            MAP_addStrKey(&self->addr2offEntry_map, e->addr, e);
+            /* Add to the addr.offEntry_map */
+            MAP_addStrKey(&self->addr.offEntry_map, e->addr, e);
          }
+
          OFFENTRY_register(e);
 
-         /* Take care of reporting, if necessary */
-         AddrRPT *ar= MAP_findStrItem(&G.rpt.AddrRPT_map, e->addr);
-         if(ar)
-            AddrRPT_addLine(ar, self, lbuf);
+         { /* Keep ObsvTpl record of offense line in log file */
+            ObsvTpl *ot= MAP_findStrItem(&self->addr.obsvTpl_map, e->addr);
+            if(!ot) {
+               ObsvTpl_create(ot, self, e->addr);
+               assert(ot);
+               MAP_addStrKey(&self->addr.obsvTpl_map, e->addr, ot);
+            }
+
+            ObsvTpl_addObsv(ot, pos, line_len);
+
+         }
+      }
+   } /* End of line reading loop */
+
+   /* Take car of possible address reporting */
+   unsigned nItems= MAP_numItems(&G.rpt.AddrRPT_map);
+   if(nItems) { /* Take care of address reports now */
+      AddrRPT *rtnArr[nItems];
+      MAP_fetchAllItems(&G.rpt.AddrRPT_map, (void**)rtnArr);
+      for(unsigned i= 0; i < nItems; ++i) {
+         AddrRPT *ar= rtnArr[i];
+         ObsvTpl *ot= MAP_findStrItem(&self->addr.obsvTpl_map, ar->addr);
+         if(!ot) continue;
+         ObsvTpl_put_AddrRPT(ot, gzfh, ar);
       }
    }
 
    rtn= self;
 abort:
-   if(fh) ez_gzclose(fh);
+   if(gzfh) ez_gzclose(gzfh);
 
    return rtn;
 }
@@ -145,25 +221,17 @@ LOGFILE_destructor(LOGFILE *self)
  * Free resources associated with LOGFILE object.
  */
 {
-   if(self->logFilePath)
-      free(self->logFilePath);
+   if(self->logFname)
+      free(self->logFname);
 
-   MAP_clearAndDestroy(&self->addr2offEntry_map, (void*(*)(void*))OFFENTRY_destructor);
-   MAP_destructor(&self->addr2offEntry_map);
+   /* Clean up the maps and their contents */
+   MAP_clearAndDestroy(&self->addr.offEntry_map, (void*(*)(void*))OFFENTRY_destructor);
+   MAP_destructor(&self->addr.offEntry_map);
+
+   MAP_clearAndDestroy(&self->addr.obsvTpl_map, (void*(*)(void*))ObsvTpl_destructor);
+   MAP_destructor(&self->addr.obsvTpl_map);
 
   return self;
-}
-
-void
-LOGFILE_set_logFilePath(LOGFILE *self, const char *path)
-/******************************************************************
- * Set the log file name by making a copy of the path.
- */
-{
-   if(self->logFilePath)
-      free(self->logFilePath);
-
-   self->logFilePath= strdup(path);
 }
 
 int
@@ -173,13 +241,32 @@ LOGFILE_writeCache(LOGFILE *self, const char *fname)
  */
 {
    int rc, rtn= -1;
+   DB *dbh= NULL;
 
    FILE *fh= ez_fopen(fname, "w");
-   rc= MAP_visitAllEntries(&self->addr2offEntry_map, (int(*)(void*,void*))OFFENTRY_cacheWrite, fh);
+
+   /* Writes all OFFENTRY object to fh */
+   rc= MAP_visitAllEntries(&self->addr.offEntry_map, (int(*)(void*,void*))OFFENTRY_cacheWrite, fh);
    if(rc) goto abort;
+
+
+   /* Write RptObj's to database if any exist */
+   if(MAP_numItems(&self->addr.obsvTpl_map)) {
+
+      static char dbFname[PATH_MAX];
+      snprintf(dbFname, sizeof(dbFname), "%s.db", fname);
+
+      ez_db_create(&dbh, NULL, 0);
+      assert(dbh);
+      ez_db_open(dbh, NULL, dbFname, NULL, DB_BTREE, DB_CREATE, 0664);
+
+      /* This will write all entries in the map do the database */
+      MAP_visitAllEntries(&self->addr.obsvTpl_map, (int(*)(void*,void*))ObsvTpl_db_put, dbh);
+   }
 
    rtn= 0;
 abort:
+   if(dbh) ez_db_close(dbh, 0);
    if(fh) ez_fclose(fh);
    return rtn;
 }
@@ -190,8 +277,8 @@ LOGFILE_print(LOGFILE *self, FILE *fh)
  * Print a human readable representation of *self.
  */
 {
-   ez_fprintf(fh, "LOGFILE %p \"%s\" {\n", self, self->logFilePath);
-   MAP_visitAllEntries(&self->addr2offEntry_map, (int(*)(void*,void*))OFFENTRY_print, fh);
+   ez_fprintf(fh, "LOGFILE %p \"%s\" {\n", self, self->logFname);
+   MAP_visitAllEntries(&self->addr.offEntry_map, (int(*)(void*,void*))OFFENTRY_print, fh);
    ez_fprintf(fh, "}\n");
 
    return 0;
@@ -200,11 +287,11 @@ LOGFILE_print(LOGFILE *self, FILE *fh)
 int
 LOGFILE_map_addr(LOGFILE *self, MAP *h_rtnMap)
 /********************************************************
- * Create a addr2offEntry_map of OFFENTRY objects with composite
+ * Create a addr.offEntry_map of OFFENTRY objects with composite
  * counts by address.
  */
 {
-   MAP_visitAllEntries(&self->addr2offEntry_map, (int(*)(void*,void*))OFFENTRY_map_addr, h_rtnMap);
+   MAP_visitAllEntries(&self->addr.offEntry_map, (int(*)(void*,void*))OFFENTRY_map_addr, h_rtnMap);
    return 0;
 }
 
@@ -215,7 +302,7 @@ LOGFILE_offenseCount(LOGFILE *self, unsigned *h_sum)
  */
 {
    if(!(self->flags & NOFFENSES_CACHED_FLG)) {
-      MAP_visitAllEntries(&self->addr2offEntry_map, (int(*)(void*,void*))OFFENTRY_offenseCount, &self->nOffenses);
+      MAP_visitAllEntries(&self->addr.offEntry_map, (int(*)(void*,void*))OFFENTRY_offenseCount, &self->nOffenses);
       self->flags |= NOFFENSES_CACHED_FLG;
    }
 
@@ -230,7 +317,7 @@ LOGFILE_addressCount(LOGFILE *self, unsigned *h_sum)
  * Get a count of all unique addresses for this file.
  */
 {
-   *h_sum += MAP_numItems(&self->addr2offEntry_map);
+   *h_sum += MAP_numItems(&self->addr.offEntry_map);
    return 0;
 }
 

@@ -19,6 +19,7 @@
 #ifndef LOGFILE_H
 #define LOGFILE_H
 
+#define _GNU_SOURCE
 #include <stdio.h>
 
 #include "logType.h"
@@ -27,32 +28,41 @@
 /* One of these for each log file which is scanned. */
 typedef struct _LOGFILE {
    int flags;
-   char *logFilePath;
-   MAP addr2offEntry_map;
+   char *logFname;
+   struct {
+      MAP offEntry_map,
+          obsvTpl_map;
+   } addr; /* addr denotes the map keys */
    unsigned nOffenses;
 } LOGFILE;
 
-#define LOGFILE_logFilePath(self) \
-   (const char*)(self)->logFilePath
+#define LOGFILE_logFname(self) \
+   (const char*)(self)->logFname
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define LOGFILE_cache_create(s, fname) \
-  ((s)=(LOGFILE_cache_constructor((s)=malloc(sizeof(LOGFILE)), fname) ? (s) : ( s ? realloc(LOGFILE_destructor(s),0) : 0 )))
+#define LOGFILE_cache_create(s, cacheFname, logFname) \
+  ((s)=(LOGFILE_cache_constructor((s)=malloc(sizeof(LOGFILE)), cacheFname, logFname) ? (s) : ( s ? realloc(LOGFILE_destructor(s),0) : 0 )))
 LOGFILE*
-LOGFILE_cache_constructor(LOGFILE *self, const char *fname);
+LOGFILE_cache_constructor(
+      LOGFILE *self,
+      const char *cacheFname,
+      const char *logFname
+      );
 /******************************************************************
  * Initialize an instance of a LOGFILE class.
  */
 
-#define LOGFILE_log_create(s, h_protoType, fname) \
-  ((s)=(LOGFILE_log_constructor((s)=malloc(sizeof(LOGFILE)), h_protoType, fname) ? (s) : ( s ? realloc(LOGFILE_destructor(s),0) : 0 )))
+#define LOGFILE_log_create(s, h_protoType, logFname) \
+  ((s)=(LOGFILE_log_constructor((s)=malloc(sizeof(LOGFILE)), h_protoType, logFname) ? (s) : ( s ? realloc(LOGFILE_destructor(s),0) : 0 )))
 LOGFILE*
-LOGFILE_log_constructor(LOGFILE *self,
-                        const struct logProtoType *h_protoType,
-                        const char *fname);
+LOGFILE_log_constructor(
+      LOGFILE *self,
+      const struct logProtoType *h_protoType,
+      const char *logFname
+      );
 /******************************************************************
  * Initialize an instance of a LOGFILE class.
  */
@@ -65,11 +75,13 @@ LOGFILE_destructor(LOGFILE *self);
  * Free resources associated with a LOGFILE object.
  */
 
+#if 0
 void
-LOGFILE_set_logFilePath(LOGFILE *self, const char *path);
+LOGFILE_set_logFname(LOGFILE *self, const char *path);
 /******************************************************************
  * Set the log file name by making a copy of the path.
  */
+#endif
 
 int
 LOGFILE_writeCache(LOGFILE *self, const char *fname);

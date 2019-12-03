@@ -16,55 +16,77 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-#ifndef AddrRPT_H
-#define AddrRPT_H
+#ifndef OBSVTPL_H
+#define OBSVTPL_H
 
 #define _GNU_SOURCE
+#include <db.h>
 #include <stdio.h>
+#include <zlib.h>
 
+#include "addrRpt.h"
+#include "dynstack.h"
 #include "logFile.h"
-#include "ptrvec.h"
 
-/* One of these for each offense found in a log file */
-typedef struct _AddrRPT {
+typedef struct _ObsvTpl {
+   char addr[43];
+   LOGFILE *lf;
+   DS stack;
+} ObsvTpl;
 
-   unsigned serial;
-
-   char addr[46];
-
-   /* Store vector of match objects */
-   PTRVEC match_vec;
-   
-} AddrRPT;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define AddrRPT_addr_create(p, addr) \
-  ((p)=(AddrRPT_addr_constructor((p)=malloc(sizeof(AddrRPT)), addr) ? (p) : ( p ? realloc(AddrRPT_destructor(p),0) : 0 )))
-AddrRPT*
-AddrRPT_addr_constructor(AddrRPT *self, const char *addr);
+#define ObsvTpl_create(p, lf, addr) \
+  ((p)=(ObsvTpl_constructor((p)=malloc(sizeof(ObsvTpl)), lf, addr) ? (p) : ( p ? realloc(ObsvTpl_destructor(p),0) : 0 )))
+ObsvTpl*
+ObsvTpl_constructor(ObsvTpl *self, LOGFILE *lf, const char *addr);
 /********************************************************
  * Prepare for use from an address on the command line
  */
 
-#define AddrRPT_destroy(s) \
-  {if(AddrRPT_destructor(s)) {free(s); (s)=0;}}
+int
+ObsvTpl_sinit(ObsvTpl *self, LOGFILE *lf, const char *addr);
+/********************************************************
+ * Initialize or reset a static instance
+ */
+
+#define ObsvTpl_destroy(s) \
+  {if(ObsvTpl_destructor(s)) {free(s); (s)=0;}}
 void*
-AddrRPT_destructor(AddrRPT *self);
+ObsvTpl_destructor(ObsvTpl *self);
 /********************************************************
  * Free resources.
  */
 
 int
-AddrRPT_addLine(AddrRPT *self, LOGFILE *lf, const char *line);
-/********************************************************
- * Add a matching line to this object.
+ObsvTpl_addObsv(ObsvTpl *self, z_off_t pos, unsigned len);
+/*****************************************************************
+ * Add an observation to this object.
  */
 
 int
-AddrRPT_print(AddrRPT *self, FILE *fh);
+ObsvTpl_db_get(ObsvTpl *self, DB *db);
+/********************************************************
+ * Fetch our content from a database.
+ */
+
+int
+ObsvTpl_db_put(ObsvTpl *self, DB *db);
+/*****************************************************************
+ * Write our contents into the database.
+ */
+
+int
+ObsvTpl_put_AddrRPT(ObsvTpl *self, gzFile fh, AddrRPT *ar);
+/********************************************************
+ *  Place contents of self into ar.
+ */
+
+int
+ObsvTpl_print(ObsvTpl *self, FILE *fh);
 /********************************************************
  * Print a human readable representation of *self.
  */

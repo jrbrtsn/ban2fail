@@ -40,6 +40,8 @@
 #define N_ADDRESSES_HINT 10000
 #define BUCKET_DEPTH_HINT 10
 
+#define MD5SUM_SZ 32
+
 /* How long to wait for reverse DNS lookups before giving up and
  * moving on with the report.
  */
@@ -67,7 +69,6 @@ enum GlobalFlg_enum {
    GLB_PRINT_LOGFILE_NAMES_FLG=1<<5,
    GLB_DNS_LOOKUP_FLG         =1<<6,
    GLB_DNS_FILTER_BAD_FLG     =1<<7,
-   GLB_NO_CACHE_FLG           =1<<8,
    GLB_LONG_LISTING_MASK = GLB_LIST_CNTRY_FLG|GLB_LIST_ADDR_FLG
 };
 

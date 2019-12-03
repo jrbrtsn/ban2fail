@@ -206,14 +206,12 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          LOGFILE *f;
 
          /* Use the cache, if available */
-         if(!(G.flags & GLB_NO_CACHE_FLG) &&
-            !access(CacheFname, F_OK))
+         if(!access(CacheFname, F_OK))
          {
 
             /* Construct object from cache file */
-            LOGFILE_cache_create(f, CacheFname);
+            LOGFILE_cache_create(f, CacheFname, log_fname);
             assert(f);
-            LOGFILE_set_logFilePath(f, log_fname);
 
          } else { /* Scan the log file, write to new cache */
 
@@ -224,9 +222,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
             /* Construct object from log file */
             LOGFILE_log_create(f, proto, log_fname);
             assert(f);
-            LOGFILE_set_logFilePath(f, log_fname);
-            if(!(G.flags & GLB_NO_CACHE_FLG) &&
-               LOGFILE_writeCache(f, CacheFname))
+            if(LOGFILE_writeCache(f, CacheFname))
             {
                eprintf("FATAL: write to cache failed.");
                exit(EXIT_FAILURE);
@@ -263,14 +259,11 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          if(!strcmp(".", entry->d_name) ||
             !strcmp("..", entry->d_name)) continue;
 
-         LOGFILE *f= MAP_findStrItem(&self->file_map, entry->d_name);
+         /* Skip all files beginning with the md5 checksum */
+         LOGFILE *f= MAP_findItem(&self->file_map, entry->d_name, MD5SUM_SZ);
          if(f) continue;
 
          rc= snprintf(CacheFname, sizeof(CacheFname), "%s/%s", CacheDname, entry->d_name);
-         if(sizeof(CacheFname) == rc) {
-            eprintf("FATAL: File path truncated!");
-            exit(EXIT_FAILURE);
-         }
          ez_unlink(CacheFname);
       }
 

@@ -16,6 +16,7 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
+#define _GNU_SOURCE
 #include <stdlib.h>
 
 #include "ez_libz.h"
@@ -189,4 +190,25 @@ char* _ez_gzgets (
    }
 
    return rtn;
+}
+
+/***************************************************/
+z_off_t _ez_gztell(
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      gzFile file
+      )
+{
+   z_off_t rtn= gztell(file);
+   if(-1 != rtn) return rtn;
+
+   int err;
+   const char *str= gzerror(file, &err);
+   if(Z_ERRNO == err) {
+      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "ERROR: gztell()");
+   } else {
+      _eprintf(fileName, lineNo, funcName, "ERROR: gztell() [ %s ]", str);
+   }
+   abort();
 }

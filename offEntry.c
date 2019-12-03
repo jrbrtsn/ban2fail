@@ -21,14 +21,15 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "ban2fail.h"
 #include "cntry.h"
+#include "ez_libdb.h"
 #include "ez_libc.h"
 #include "map.h"
 #include "offEntry.h"
 #include "util.h"
-
 /********************************************************/
 /**************** OFFENTRY ******************************/
 /********************************************************/
@@ -167,5 +168,6 @@ OFFENTRY_offenseCount(OFFENTRY *self, unsigned *h_sum)
  */
 {
    *h_sum += self->count;
+//eprintf("%s numItems= %u", self->addr, PTRVEC_numItems(&self->rptObj_vec));
    return 0;
 }

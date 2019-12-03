@@ -79,7 +79,7 @@ AddrRPT_addr_constructor(AddrRPT *self, const char *addr)
    memset(self, 0, sizeof(*self));
 
    strncpy(self->addr, addr, sizeof(self->addr)-1);
-   PTRVEC_constructor(&self->vec, 100);
+   PTRVEC_constructor(&self->match_vec, 100);
 
    /* Stamp with serial number so reporting at the end can be
     * in the order addresses were supplied on the command
@@ -98,10 +98,10 @@ AddrRPT_destructor(AddrRPT *self)
  */
 {
    Match *m;
-   while((m= PTRVEC_remHead(&self->vec)))
+   while((m= PTRVEC_remHead(&self->match_vec)))
       Match_destroy(m);
 
-   PTRVEC_destroy(&self->vec);
+   PTRVEC_destroy(&self->match_vec);
    return self;
 }
 
@@ -114,7 +114,7 @@ AddrRPT_addLine(AddrRPT *self, LOGFILE *lf, const char *line)
    Match *m;
    Match_create(m, lf, line);
    assert(m);
-   PTRVEC_addTail(&self->vec, m);
+   PTRVEC_addTail(&self->match_vec, m);
    return 0;
 }
 
@@ -127,12 +127,12 @@ AddrRPT_print(AddrRPT *self, FILE *fh)
    Match *m;
    unsigned i;
    LOGFILE *lf= NULL;
-   ez_fprintf(fh, "============== Report for %s\r\n", self->addr);
+   ez_fprintf(fh, "====== Report for %s ======\r\n", self->addr);
 
-   PTRVEC_loopFwd(&self->vec, i, m) {
+   PTRVEC_loopFwd(&self->match_vec, i, m) {
 
       if(lf != m->lf) {
-         ez_fprintf(fh, "%s\r\n", LOGFILE_logFilePath(m->lf));
+         ez_fprintf(fh, "------- %s -------------\r\n", LOGFILE_logFname(m->lf));
          lf= m->lf;
       }
       ez_fprintf(fh, "%s\r\n", m->line);

@@ -89,7 +89,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 13,
-      .patch= 0
+      .patch= 1
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -279,9 +279,6 @@ main(int argc, char **argv)
          /* Place it in global map */
          MAP_addStrKey(&G.rpt.AddrRPT_map, addr, ar);
 
-         /* Don't touch the cache */
-         G.flags |= GLB_NO_CACHE_FLG;
-
       }
 
 
@@ -307,7 +304,7 @@ main(int argc, char **argv)
 
    /* Obtain a file lock to protect cache files */
    /*===========================================================*/
-   if(!(G.flags & GLB_NO_CACHE_FLG)) {
+   {
       /* Make sure the file exists by open()'ing */
       lock_fd= open(G.lockPath, O_CREAT|O_WRONLY|O_CLOEXEC, 0640);
       if(-1 == lock_fd) {
@@ -631,12 +628,12 @@ main(int argc, char **argv)
 
    fflush(G.rpt.fh);
 
+   rtn= EXIT_SUCCESS;
+abort:
+
    /* Wait for pager to finish, if it is running */
    if(S.flags & PAGER_RUNNING_FLG)
       ez_pclose(G.rpt.fh);
-
-   rtn= EXIT_SUCCESS;
-abort:
 
    /* Make sure lock file is unlocked */
    if(-1 != lock_fd) {

@@ -159,7 +159,8 @@ struct MAP_node *n_ptr;
       /* For each node in the bucket... */
       PTRVEC_loopFwd(self->bucketArr+ndx, i, n_ptr) {
          /* Call the supplied function */
-         if((*func)(n_ptr->item_ptr, data)) return 1;
+         int rc= (*func)(n_ptr->item_ptr, data);
+         if(rc) return rc;
       }
    }
    return 0;

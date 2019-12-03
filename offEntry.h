@@ -19,8 +19,10 @@
 #ifndef OFFENTRY_H
 #define OFFENTRY_H
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <time.h>
+#include <zlib.h>
 
 #include "map.h"
 #include "pdns.h"
@@ -39,6 +41,13 @@ typedef struct _OFFENTRY {
    } dns;
    
 } OFFENTRY;
+
+#if 0
+struct OFFENTRY_cacheWrite {
+   FILE *fh;
+   DB *dbh;
+};
+#endif
 
 #ifdef __cplusplus
 extern "C" {

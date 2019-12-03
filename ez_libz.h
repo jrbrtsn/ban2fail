@@ -20,6 +20,7 @@
 #define EZ_GZFILE_H
 
 /* Simplified interface to libz file functions */
+#define _GNU_SOURCE
 #include <zlib.h>
 
 #ifdef __cplusplus
@@ -86,6 +87,15 @@ z_off_t _ez_gzseek(
       gzFile file,
       z_off_t offset,
       int whence
+      );
+
+#define ez_gztell(file) \
+   _ez_gztell(__FILE__, __LINE__, __FUNCTION__, file)
+z_off_t _ez_gztell(
+      const char *fileName,
+      int lineNo,
+      const char *funcName,
+      gzFile file
       );
 
 #define ez_gzgets(file, buf, len) \
