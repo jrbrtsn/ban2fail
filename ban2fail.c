@@ -89,7 +89,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 13,
-      .patch= 1
+      .patch= 2
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -186,7 +186,7 @@ main(int argc, char **argv)
 
          int c, option_ndx= 0;
 
-         c= getopt_long(argc, argv, ":a::cst:v", long_options, &option_ndx);
+         c= getopt_long(argc, argv, ":a::cFst:v", long_options, &option_ndx);
 
          if(-1 == c) break;
 
@@ -195,10 +195,6 @@ main(int argc, char **argv)
             /* print usage help */
             case HELP_OPT_ENUM:
                ++errflg;
-               break;
-
-            case 'c':
-               G.flags |= GLB_LIST_CNTRY_FLG;
                break;
 
             case 'a':
@@ -211,6 +207,14 @@ main(int argc, char **argv)
                   } else
                      ++errflg;
                }
+               break;
+
+            case 'c':
+               G.flags |= GLB_LIST_CNTRY_FLG;
+               break;
+
+            case 'F':
+               G.flags |= GLB_FLUSH_CACHE_FLG;
                break;
 
             case 's':
@@ -251,6 +255,7 @@ main(int argc, char **argv)
 "  --help\tprint this usage message.\n"
 "  -a[+]\t\tList results by Address. '+' to perform DNS reverse lookups.\n"
 "  -c\t\tlist results by Country\n"
+"  -F\t\tFlush the cache\n"
 "  -s\t\tlist Summary results only\n"
 "  -t confFile\tTest confFile, do not apply iptables rules\n"
 "  -v\t\tVerbose information about unrecognized configuration info\n"
@@ -335,6 +340,9 @@ main(int argc, char **argv)
 
    /* Open our cache, instance file-specific LOGTYPE objects */
    { /*=============================================================*/
+      if(G.flags & GLB_FLUSH_CACHE_FLG && !access(G.cacheDir, F_OK)) {
+         ez_rmdir_recursive(G.cacheDir);
+      }
 
       /* Make the directory if needed */
       if(access(G.cacheDir, F_OK)) {

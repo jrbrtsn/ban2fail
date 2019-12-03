@@ -190,6 +190,9 @@ obsv_load_AddrRPT(struct obsv *self, struct infoTuple *it)
    assert(self->len < sizeof(lbuf));
    unsigned len= MIN(self->len, sizeof(lbuf)-1);
 
+   /* Put null terminator in place */
+   lbuf[len]= '\0';
+
    ez_gzseek(it->fh, self->pos, SEEK_SET);
    ez_gzread(it->fh, lbuf, len);
    AddrRPT_addLine(it->ar, it->lf, lbuf);
