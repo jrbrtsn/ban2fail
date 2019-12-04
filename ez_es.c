@@ -16,7 +16,11 @@ int _ez_ES_registerFd (
 {
    int rtn= ES_registerFd(fd, events, callback_f, ctxt);
    if(-1 == rtn) {
-      _eprintf(fileName, lineNo, funcName, "ES_registerFd() failed.");
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ES_registerFd() failed.");
       abort();
    }
    return rtn;
@@ -35,7 +39,11 @@ int _ez_ES_registerSignal (
 {
    int rtn= ES_registerSignal(signum, callback_f, ctxt);
    if(-1 == rtn) {
-      _eprintf(fileName, lineNo, funcName, "ES_registerSignal() failed.");
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ES_registerSignal() failed.");
       abort();
    }
    return rtn;
@@ -54,7 +62,11 @@ int _ez_ES_registerVSignal (
 {
    int rtn= ES_registerVSignal(signum, callback_f, ctxt);
    if(-1 == rtn) {
-      _eprintf(fileName, lineNo, funcName, "ES_registerVSignal() failed.");
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+             "ES_registerVSignal() failed.");
       abort();
    }
    return rtn;
@@ -71,7 +83,11 @@ int _ez_ES_VSignal (
 {
    int rtn= ES_VSignal(tid, signum);
    if(rtn) {
-      _eprintf(fileName, lineNo, funcName, "ES_VSignal() returned %d.", rtn);
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ES_VSignal() returned %d.", rtn);
       abort();
    }
    return rtn;
@@ -90,7 +106,11 @@ int _ez_ES_registerTimer (
 {
    int rtn= ES_registerTimer(pause_ms, interval_ms, callback_f, ctxt);
    if(-1 == rtn) {
-      _eprintf(fileName, lineNo, funcName, "ES_registerTimer() failed.");
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ES_registerTimer() failed.");
       abort();
    }
    return rtn;
@@ -106,7 +126,11 @@ int _ez_ES_unregister (
 {
    int rtn= ES_unregister(key);
    if(-1 == rtn) {
-      _eprintf(fileName, lineNo, funcName, "ES_unregister() failed.");
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ES_unregister() failed.");
       abort();
    }
    return rtn;
@@ -121,7 +145,11 @@ int _ez_ES_run (
 {
    int rtn= ES_run();
    if(rtn) {
-      _eprintf(fileName, lineNo, funcName, "ES_run() returned %d", rtn);
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ES_run() returned %d", rtn);
       abort();
    }
    return rtn;

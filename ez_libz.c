@@ -34,7 +34,11 @@ gzFile _ez_gzopen(
    gzFile rtn= gzopen(path, mode);
    if(rtn) return rtn;
 
-   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "ERROR: gzopen()");
+   _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "ERROR: gzopen()");
    abort();
 }
 
@@ -54,7 +58,11 @@ int _ez_gzclose(
    switch(err) {
 
       case Z_ERRNO:
-         _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "ERROR: gzclose()");
+         _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+               , fileName, lineNo, funcName
+#endif
+               , "ERROR: gzclose()");
          abort();
 
       case Z_STREAM_ERROR:
@@ -70,7 +78,11 @@ int _ez_gzclose(
          break;
 
    }
-   _eprintf(fileName, lineNo, funcName, "ERROR: gzclose() [ %s ]", msg);
+   _eprintf(
+#ifdef DEBUG
+         fileName, lineNo, funcName,
+#endif
+         "ERROR: gzclose() [ %s ]", msg);
    abort();
 }
 
@@ -90,9 +102,17 @@ int _ez_gzwrite(
    int err;
    const char *str= gzerror(file, &err);
    if(Z_ERRNO == err) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "ERROR: gzwrite()");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "ERROR: gzwrite()");
    } else {
-      _eprintf(fileName, lineNo, funcName, "ERROR: gzwrite() [ %s ]", str);
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ERROR: gzwrite() [ %s ]", str);
    }
    abort();
 }
@@ -113,9 +133,17 @@ int _ez_gzread(
    int err;
    const char *str= gzerror(file, &err);
    if(Z_ERRNO == err) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "ERROR: gzread()");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "ERROR: gzread()");
    } else {
-      _eprintf(fileName, lineNo, funcName, "ERROR: gzread() [ %s ]", str);
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ERROR: gzread() [ %s ]", str);
    }
    abort();
 }
@@ -134,9 +162,17 @@ int _ez_gzflush(
 
    const char *str= gzerror(file, &err);
    if(Z_ERRNO == err) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "ERROR: gzflush()");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "ERROR: gzflush()");
    } else {
-      _eprintf(fileName, lineNo, funcName, "ERROR: gzflush() [ %s ]", str);
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ERROR: gzflush() [ %s ]", str);
    }
    abort();
 }
@@ -157,9 +193,17 @@ z_off_t _ez_gzseek(
    int err;
    const char *str= gzerror(file, &err);
    if(Z_ERRNO == err) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "ERROR: gzseek()");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "ERROR: gzseek()");
    } else {
-      _eprintf(fileName, lineNo, funcName, "ERROR: gzseek() [ %s ]", str);
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ERROR: gzseek() [ %s ]", str);
    }
    abort();
 }
@@ -181,9 +225,17 @@ char* _ez_gzgets (
       const char *str= gzerror(file, &err);
       if(Z_OK != err && Z_STREAM_END != err) {
          if(Z_ERRNO == err) {
-            _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "ERROR: gzgets()");
+            _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+                  , fileName, lineNo, funcName
+#endif
+                  , "ERROR: gzgets()");
          } else {
-            _eprintf(fileName, lineNo, funcName, "ERROR: gzgets() [ %s ]", str);
+            _eprintf(
+#ifdef DEBUG
+                  fileName, lineNo, funcName,
+#endif
+                  "ERROR: gzgets() [ %s ]", str);
          }
          abort();
       }
@@ -206,9 +258,17 @@ z_off_t _ez_gztell(
    int err;
    const char *str= gzerror(file, &err);
    if(Z_ERRNO == err) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "ERROR: gztell()");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "ERROR: gztell()");
    } else {
-      _eprintf(fileName, lineNo, funcName, "ERROR: gztell() [ %s ]", str);
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ERROR: gztell() [ %s ]", str);
    }
    abort();
 }

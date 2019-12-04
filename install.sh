@@ -7,7 +7,7 @@ DST=$BINDIR/$B2F
 echo $0 $@
 env | grep INSTALL
 strip release/$B2F
-sudo cp release/$B2F $DST
+sudo /bin/cp -f release/$B2F $DST
 sudo chown .adm $DST
 sudo chmod 4750 $DST
 

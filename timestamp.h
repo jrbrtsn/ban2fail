@@ -20,6 +20,7 @@
 #define TIMESTAMP_H
 
 #define _GNU_SOURCE
+#include <openssl/md5.h>
 #include <regex.h>
 #include <time.h>
 
@@ -57,6 +58,11 @@ TS_scan(const TS *self, time_t *rslt, const char *str, const struct tm *pTmRef);
  * Scan a string to obtain the timestamp. 
  */
 
+int
+TS_MD5_update(const TS *self, MD5_CTX *ctx);
+/********************************************************
+ * For computing MD5 checksum of config data.
+ */
 
 
 #ifdef __cplusplus

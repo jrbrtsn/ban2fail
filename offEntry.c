@@ -225,6 +225,7 @@ OFFENTRY_list(OFFENTRY *self, FILE *fh, int flags, unsigned nAllowed)
 
    const static struct bitTuple dns_flagsArr[]= {
       {.name= "~", .bit= PDNS_FWD_FAIL_FLG},
+      {.name= "!", .bit= PDNS_FWD_MISMATCH_FLG},
       {.name= "!!", .bit= PDNS_FWD_NONE_FLG},
       {.name= "NXDOMAIN", .bit= PDNS_NXDOMAIN_FLG},
       {.name= "SERVFAIL", .bit= PDNS_SERVFAIL_FLG},

@@ -19,6 +19,7 @@
 #ifndef LOGTYPE_H
 #define LOGTYPE_H
 
+#define _GNU_SOURCE
 #include <stdio.h>
 
 #include "ban2fail.h"

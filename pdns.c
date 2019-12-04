@@ -389,55 +389,7 @@ worker_check_inbox_f(void *vp_ndx, int signo)
       int64_t ms= clock_gettime_ms(CLOCK_REALTIME) - S.start_ms;
 
       /* Check to see if we've finished the reverse DNS lookup */
-      if(msg.e->dns.flags & PDNS_REV_DNS_FLG) {
-
-         const static struct addrinfo hints= {
-            .ai_family= AF_UNSPEC,    /* Allow IPv4 or IPv6 */
-            .ai_socktype= SOCK_DGRAM,
-            .ai_protocol= IPPROTO_UDP
-         };
-
-         /* Get a populated addrinfo object */
-         struct addrinfo *res= NULL;
-         int rc= ez_getaddrinfo(msg.e->dns.name, NULL, &hints, &res);
-
-#ifdef qqDEBUG
-if(!strcmp(msg.e->addr, "50.116.38.131")) {
-   pthread_mutex_lock(&S.prt_mtx);
-   ez_fprintf(stderr, "%s (%s) ----------------------------------\n", msg.e->addr, msg.e->dns.name);
-   addrinfo_print(res, stderr);
-   fflush(stderr);
-   pthread_mutex_unlock(&S.prt_mtx);
-}
-#endif
-         switch(rc) {
-            case 0:
-               if(!addrinfo_is_match(res, msg.e->addr))
-                  msg.e->dns.flags |= PDNS_FWD_MISMATCH_FLG;
-               break;
-
-            case EAI_NONAME:
-               msg.e->dns.flags |= PDNS_FWD_NONE_FLG;
-               break;
-
-            case EAI_FAIL:
-            case EAI_NODATA:
-            case EAI_AGAIN:
-               msg.e->dns.flags |= PDNS_FWD_FAIL_FLG;
-               break;
-
-            default:
-               eprintf("rc= %d", rc);
-               assert(0);
-
-         }
-
-         /* In any case, we are done */
-         msg.e->dns.flags |= PDNS_FWD_DNS_FLG;
-
-         if(res) freeaddrinfo(res);
-
-      } else { /* reverse lookup */
+      if(!(msg.e->dns.flags & PDNS_REV_DNS_FLG)) {
 
          const static struct addrinfo hints= {
             .ai_flags = AI_NUMERICHOST, /* doing reverse lookups */
@@ -458,9 +410,9 @@ if(!strcmp(msg.e->addr, "50.116.38.131")) {
          rc= ez_getnameinfo(res->ai_addr, res->ai_addrlen, hostBuf, sizeof(hostBuf)-1, NULL, 0, NI_NAMEREQD);
 
 #ifdef qqDEBUG
-if(!strcmp(msg.e->addr, "50.116.38.131")) {
+if(!strcmp(msg.e->addr, "113.183.137.246")) {
    pthread_mutex_lock(&S.prt_mtx);
-   ez_fprintf(stderr, "%s ----------------------------------\n", msg.e->addr);
+   ez_fprintf(stderr, "rc= %d, %s ----------------------------------\n", rc, msg.e->addr);
    addrinfo_print(res, stderr);
    fflush(stderr);
    pthread_mutex_unlock(&S.prt_mtx);
@@ -487,6 +439,62 @@ if(!strcmp(msg.e->addr, "50.116.38.131")) {
                abort();
          }
 
+
+      } else { /* reverse lookup */
+
+
+         const static struct addrinfo hints= {
+            .ai_family= AF_UNSPEC,    /* Allow IPv4 or IPv6 */
+            .ai_socktype= SOCK_DGRAM,
+            .ai_protocol= IPPROTO_UDP
+         };
+
+         /* Get a populated addrinfo object */
+         struct addrinfo *res= NULL;
+         int rc= ez_getaddrinfo(msg.e->dns.name, NULL, &hints, &res);
+
+#ifdef qqDEBUG
+if(!strcmp(msg.e->addr, "113.183.137.246")) {
+   pthread_mutex_lock(&S.prt_mtx);
+   ez_fprintf(stderr, "rc= %d, %s (%s) ----------------------------------\n", rc, msg.e->addr, msg.e->dns.name);
+   addrinfo_print(res, stderr);
+   fflush(stderr);
+   pthread_mutex_unlock(&S.prt_mtx);
+}
+#endif
+         switch(rc) {
+            case 0:
+               if(!addrinfo_is_match(res, msg.e->addr))
+                  msg.e->dns.flags |= PDNS_FWD_MISMATCH_FLG;
+#ifdef qqDEBUG
+               if(!strcmp(msg.e->addr, "113.183.137.246")) {
+                  eprintf( "113.183.137.246 %s"
+                     , msg.e->dns.flags & PDNS_FWD_MISMATCH_FLG ? "Mismatched" : "matched"
+                     );
+               }
+#endif
+               break;
+
+            case EAI_NONAME:
+               msg.e->dns.flags |= PDNS_FWD_NONE_FLG;
+               break;
+
+            case EAI_FAIL:
+            case EAI_NODATA:
+            case EAI_AGAIN:
+               msg.e->dns.flags |= PDNS_FWD_FAIL_FLG;
+               break;
+
+            default:
+               eprintf("rc= %d", rc);
+               assert(0);
+
+         }
+
+         /* In any case, we are done */
+         msg.e->dns.flags |= PDNS_FWD_DNS_FLG;
+
+         if(res) freeaddrinfo(res);
       }
 
       /* Catch being bumped out of blocking call by signal */

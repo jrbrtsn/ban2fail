@@ -43,7 +43,11 @@ int _ez_getaddrinfo_a(
 
    /* _sys_eprintf() will pass errno to gai_sterror */
    errno= rtn;
-   _sys_eprintf(gai_strerror, fileName, lineNo, funcName, "getaddrinfo_a() failed");
+   _sys_eprintf(gai_strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "getaddrinfo_a() failed");
    abort();
 }
 
@@ -69,6 +73,10 @@ int _ez_gai_suspend(
 
    /* _sys_eprintf() will pass errno to gai_sterror */
    errno= rtn;
-   _sys_eprintf(gai_strerror, fileName, lineNo, funcName, "gai_suspend() failed");
+   _sys_eprintf(gai_strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "gai_suspend() failed");
    abort();
 }

@@ -118,6 +118,12 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
    { /* Compute md5sum of all patterns put together */
       MD5_CTX md5ctx;
       MD5_Init(&md5ctx);
+
+      /* Get timestamp config */
+      if(TS_is_prepared(&proto->ts))
+         TS_MD5_update(&proto->ts, &md5ctx);
+
+      /* Now all targets */
       const Target *t;
       for(t= proto->targetArr; t->rxArr; ++t) {
          Target_MD5_update(t, &md5ctx);

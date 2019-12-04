@@ -38,7 +38,11 @@ int _ez_db_create(
 
    /* _sys_eprintf() will pass errno to db_sterror */
    errno= rtn;
-   _sys_eprintf((const char*(*)(int))db_strerror, fileName, lineNo, funcName, "db_create() failed");
+   _sys_eprintf((const char*(*)(int))db_strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "db_create() failed");
    abort();
 }
 
@@ -56,14 +60,17 @@ int _ez_db_open(
       int mode
       )
 {
-//eprintf("Opening file (%p) \"%s\"", db, file);
    int rtn= db->open(db, txnid, file, database, type, flags, mode);
 
    if(!rtn) return 0;
 
    /* _sys_eprintf() will pass errno to db_sterror */
    errno= rtn;
-   _sys_eprintf((const char*(*)(int))db_strerror, fileName, lineNo, funcName, "DB->open(\"%s\") failed", database);
+   _sys_eprintf((const char*(*)(int))db_strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "DB->open(\"%s\") failed", database);
    abort();
 }
 
@@ -85,7 +92,11 @@ int _ez_db_put(
 
    /* _sys_eprintf() will pass errno to db_sterror */
    errno= rtn;
-   _sys_eprintf((const char*(*)(int))db_strerror, fileName, lineNo, funcName, "DB->put() failed");
+   _sys_eprintf((const char*(*)(int))db_strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "DB->put() failed");
    abort();
 }
 
@@ -111,7 +122,11 @@ int _ez_db_get(
 
    /* _sys_eprintf() will pass errno to db_sterror */
    errno= rtn;
-   _sys_eprintf((const char*(*)(int))db_strerror, fileName, lineNo, funcName, "DB->get() failed");
+   _sys_eprintf((const char*(*)(int))db_strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "DB->get() failed");
    abort();
 }
 
@@ -132,7 +147,11 @@ int _ez_db_del(
 
    /* _sys_eprintf() will pass errno to db_sterror */
    errno= rtn;
-   _sys_eprintf((const char*(*)(int))db_strerror, fileName, lineNo, funcName, "DB->del() failed");
+   _sys_eprintf((const char*(*)(int))db_strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "DB->del() failed");
    abort();
 }
 
@@ -151,7 +170,11 @@ int _ez_db_close(
 
    /* _sys_eprintf() will pass errno to db_sterror */
    errno= rtn;
-   _sys_eprintf((const char*(*)(int))db_strerror, fileName, lineNo, funcName, "DB->close() failed");
+   _sys_eprintf((const char*(*)(int))db_strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "DB->close() failed");
    abort();
 }
 
@@ -170,6 +193,10 @@ int _ez_db_fd(
 
    /* _sys_eprintf() will pass errno to db_sterror */
    errno= rtn;
-   _sys_eprintf((const char*(*)(int))db_strerror, fileName, lineNo, funcName, "DB->fd() failed");
+   _sys_eprintf((const char*(*)(int))db_strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "DB->fd() failed");
    abort();
 }

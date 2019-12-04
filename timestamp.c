@@ -144,3 +144,18 @@ abort:
    return rtn;
 }
 
+int
+TS_MD5_update(const TS *self, MD5_CTX *ctx)
+/********************************************************
+ * For computing MD5 checksum of config data.
+ */
+{
+   if(self->pattern)
+      MD5_Update(ctx, self->pattern, strlen(self->pattern));
+
+   if(self->strptime_fmt)
+      MD5_Update(ctx, self->strptime_fmt, strlen(self->strptime_fmt));
+
+   MD5_Update(ctx, &self->flags, sizeof(self->flags));
+   return 0;
+}

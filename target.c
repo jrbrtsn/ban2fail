@@ -132,6 +132,8 @@ Target_MD5_update(const Target *self, MD5_CTX *ctx)
  * For computing MD5 checksum of cumulative patterns.
  */
 {
+   MD5_Update(ctx, &self->severity, sizeof(self->severity));
+
    for(unsigned i= 0; i < self->nRx; ++i) {
       const struct TargetRx *rx= self->rxArr+i;
       MD5_Update(ctx, rx->pattern, strlen(rx->pattern));

@@ -35,7 +35,11 @@ int _ez_fputs (
 {
    int rtn= fputs (s, stream);
    if (EOF == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fputs() failed");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "fputs(\"%s\") failed", s);
       abort();
    }
    return rtn;
@@ -52,7 +56,11 @@ int _ez_fputc (
 {
    int rtn= fputc (c, stream);
    if (EOF == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fputc() failed");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "fputc('%c') failed", (unsigned char)c);
       abort();
    }
    return rtn;
@@ -76,7 +84,11 @@ int _ez_fprintf (
    va_end(args);
 
    if (0 > rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "vfprintf() failed");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "vfprintf() failed");
       abort();
    }
 
@@ -95,7 +107,11 @@ FILE* _ez_popen (
    errno= 0;
    FILE *rtn= popen (command, type);
    if (!rtn || errno) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "popen(\"%s\", \"%s\") failed", command, type);
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "popen(\"%s\", \"%s\") failed", command, type);
       abort();
    }
    return rtn;
@@ -112,7 +128,11 @@ FILE* _ez_fopen (
 {
    FILE *rtn= fopen (pathname, mode);
    if (!rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fopen(\"%s\", \"%s\") failed", pathname, mode);
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "fopen(\"%s\", \"%s\") failed", pathname, mode);
       abort();
    }
    return rtn;
@@ -128,7 +148,11 @@ int _ez_fclose (
 {
    int rtn= fclose (stream);
    if (EOF == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fclose() failed");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "fclose() failed");
       abort();
    }
    return rtn;
@@ -144,7 +168,11 @@ int _ez_fflush (
 {
    int rtn= fflush (stream);
    if (EOF == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fflush() failed");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "fflush() failed");
       abort();
    }
    return rtn;
@@ -163,7 +191,11 @@ size_t _ez_fread (
 {
    size_t rtn= fread (ptr, size, nmemb, stream);
    if (ferror(stream)) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fread() failed");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "fread() failed");
       abort();
    }
    return rtn;
@@ -182,7 +214,11 @@ size_t _ez_fwrite (
 {
    size_t rtn= fwrite (ptr, size, nmemb, stream);
    if (ferror(stream)) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fwrite() failed");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "fwrite() failed");
       abort();
    }
    return rtn;
@@ -198,7 +234,11 @@ int _ez_pclose (
 {
    int rtn= pclose (stream);
    if (-1 == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "pclose() failed");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "pclose() failed");
       abort();
    }
    return rtn;
@@ -216,7 +256,11 @@ char* _ez_fgets (
 {
    char *rtn= fgets (s, size, stream);
    if (!rtn && !feof(stream)) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fgets() failed");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "fgets() failed");
       abort();
    }
    return rtn;
@@ -232,7 +276,11 @@ int _ez_remove (
 {
    int rtn= remove (pathname);
    if (-1 == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "remove(\"%s\") failed", pathname);
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "remove(\"%s\") failed", pathname);
       abort();
    }
    return rtn;
@@ -249,7 +297,11 @@ int _ez_rename (
 {
    int rtn= rename (oldpath, newpath);
    if (-1 == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "rename(\"%s\", \"%s\") failed", oldpath, newpath);
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "rename(\"%s\", \"%s\") failed", oldpath, newpath);
       abort();
    }
    return rtn;
@@ -265,7 +317,11 @@ DIR* _ez_opendir (
 {
    DIR *rtn= opendir (name);
    if (!rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "opendir(\"%s\") failed", name);
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "opendir(\"%s\") failed", name);
       abort();
    }
    return rtn;
@@ -281,7 +337,11 @@ int _ez_closedir (
 {
    int rtn= closedir (dirp);
    if (-1 == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "closedir() failed");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "closedir() failed");
       abort();
    }
    return rtn;
@@ -301,7 +361,11 @@ struct dirent* _ez_readdir (
    struct dirent* rtn= readdir(dirp);
 
    if (!rtn && errno) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "readdir() failed");
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "readdir() failed");
       abort();
    }
 
@@ -318,7 +382,11 @@ int _ez_close (
 {
    int rtn= close (fd);
    if (-1 == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "close(%d) failed", fd);
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "close(%d) failed", fd);
       abort();
    }
    return rtn;
@@ -336,7 +404,11 @@ ssize_t _ez_write (
 {
    ssize_t rtn= write (fd, buf, count);
    if (-1 == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "write(fd= %d) failed", fd);
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "write(fd= %d) failed", fd);
       abort();
    }
    return rtn;
@@ -353,7 +425,11 @@ int _ez_stat (
 {
    int rtn= stat (pathname, statbuf);
    if (-1 == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "stat(\"%s\") failed", pathname);
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "stat(\"%s\") failed", pathname);
       abort();
    }
    return rtn;
@@ -370,7 +446,11 @@ int _ez_mkdir (
 {
    int rtn= mkdir (pathname, mode);
    if (-1 == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "mkdir(\"%s\", %04x) failed", pathname, (unsigned)mode);
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "mkdir(\"%s\", %04x) failed", pathname, (unsigned)mode);
       abort();
    }
    return rtn;
@@ -386,7 +466,11 @@ int _ez_rmdir (
 {
    int rtn= rmdir (pathname);
    if (-1 == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "rmdir(\"%s\") failed", pathname);
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "rmdir(\"%s\") failed", pathname);
       abort();
    }
    return rtn;
@@ -402,7 +486,11 @@ int _ez_unlink (
 {
    int rtn= unlink (pathname);
    if (-1 == rtn) {
-      _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "unlink(\"%s\") failed", pathname);
+      _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+            , fileName, lineNo, funcName
+#endif
+            , "unlink(\"%s\") failed", pathname);
       abort();
    }
    return rtn;
@@ -430,13 +518,21 @@ int _ez_getaddrinfo(
          return rtn;
 
       case EAI_SYSTEM:
-         _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "getaddrinfo(\"%s:%s\") failed", node, service);
+         _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+               , fileName, lineNo, funcName
+#endif
+               , "getaddrinfo(\"%s:%s\") failed", node, service);
          abort();
    }
 
    /* _sys_eprintf() will pass errno to gai_sterror */
    errno= rtn;
-   _sys_eprintf(gai_strerror, fileName, lineNo, funcName, "getaddrinfo(\"%s:%s\") failed", node, service);
+   _sys_eprintf(gai_strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "getaddrinfo(\"%s:%s\") failed", node, service);
    abort();
 }
 
@@ -464,13 +560,21 @@ int _ez_getnameinfo(
          return rtn;
 
       case EAI_SYSTEM:
-         _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "getnameinfo() failed");
+         _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+               , fileName, lineNo, funcName
+#endif
+               , "getnameinfo() failed");
          abort();
    }
 
    /* _sys_eprintf() will pass errno to gai_sterror */
    errno= rtn;
-   _sys_eprintf(gai_strerror, fileName, lineNo, funcName, "getnameinfo() failed", rtn);
+   _sys_eprintf(gai_strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "getnameinfo() failed", rtn);
    abort();
 }
 
@@ -494,7 +598,11 @@ int _ez_flock (
          break;
    }
 
-   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "flock() failed");
+   _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "flock() failed");
    abort();
 
 }
@@ -520,7 +628,11 @@ int _ez_open(
          break;
    }
 
-   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "open(\"%s\") failed", pathname);
+   _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "open(\"%s\") failed", pathname);
    abort();
 
 }
@@ -544,7 +656,11 @@ int _ez_access(
          break;
    }
 
-   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "access(\"%s\") failed", pathname);
+   _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "access(\"%s\") failed", pathname);
    abort();
 
 }
@@ -562,7 +678,11 @@ char *_ez_strptime(
    char *rtn= strptime (s, format, tm);
    if(rtn) return rtn;
 
-   _eprintf(fileName, lineNo, funcName, "strptime(\"%s\",\"%s\") failed", s, format);
+   _eprintf(
+#ifdef DEBUG
+         fileName, lineNo, funcName,
+#endif
+         "strptime(\"%s\", \"%s\") failed", s, format);
    abort();
 
 }
@@ -578,7 +698,11 @@ int _ez_seteuid(
    int rtn= seteuid (euid);
    if(0 == rtn) return 0;
 
-   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "seteuid(%d) failed", (int)euid);
+   _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "seteuid(%d) failed", (int)euid);
    abort();
 }
 
@@ -593,7 +717,11 @@ int _ez_setegid(
    int rtn= setegid (egid);
    if(0 == rtn) return 0;
 
-   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "setegid(%d) failed", (int)egid);
+   _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "setegid(%d) failed", (int)egid);
    abort();
 }
 
@@ -621,7 +749,11 @@ struct group* _ez_getgrnam(
 
    }
       
-   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "getgrnam(\"%s\") failed", name);
+   _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "getgrnam(\"%s\") failed", name);
    abort();
 
 }
@@ -639,7 +771,11 @@ int _ez_chown(
    int rtn= chown (pathname, owner, group);
    if(0 == rtn) return rtn;
 
-   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "chown(\"%s\", %d, %d) failed", pathname, (int)owner, (int)group);
+   _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "chown(\"%s\", %d, %d) failed", pathname, (int)owner, (int)group);
    abort();
 }
 
@@ -656,7 +792,11 @@ int _ez_fchown(
    int rtn= fchown (fd, owner, group);
    if(0 == rtn) return rtn;
 
-   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fchown() failed");
+   _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "fchown() failed");
    abort();
 }
 
@@ -672,7 +812,11 @@ int _ez_fchmod(
    int rtn= fchmod (fd, mode);
    if(0 == rtn) return rtn;
 
-   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fchmod() failed");
+   _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "fchmod() failed");
    abort();
 }
 
@@ -687,7 +831,11 @@ int _ez_setuid(
    int rtn= setuid (uid);
    if(0 == rtn) return 0;
 
-   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "setuid(%d) failed", (int)uid);
+   _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "setuid(%d) failed", (int)uid);
    abort();
 }
 
@@ -702,6 +850,10 @@ int _ez_setgid(
    int rtn= setgid (gid);
    if(0 == rtn) return 0;
 
-   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "setgid(%d) failed", (int)gid);
+   _sys_eprintf((const char*(*)(int))strerror
+#ifdef DEBUG
+         , fileName, lineNo, funcName
+#endif
+         , "setgid(%d) failed", (int)gid);
    abort();
 }

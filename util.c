@@ -926,7 +926,8 @@ addrinfo_is_match(const struct addrinfo *ai, const char *addr)
 {
    for(; ai; ai= ai->ai_next) {
       const char *this_addr= addrinfo_2_addr(ai);
-      if(!strcmp(this_addr, addr)) return 1;
+      if(!strcmp(this_addr, addr))
+         return 1;
    }
    return 0;
 }
@@ -944,22 +945,27 @@ addrinfo_2_addr(const struct addrinfo *ai)
  * address of the static buffer containing address in null terminated string form.
  */
 {
+   /* Rotating buffers so this can be used multiple times as arg to printf() */
+#define N_BUFS 5
 #define BUF_SZ 43
    const char *rtn= NULL;
    if(!ai->ai_addr) goto abort;
 
-   static _Thread_local char buf[BUF_SZ];
-   memset(buf, 0, sizeof(buf));
+   static _Thread_local char bufArr[N_BUFS][BUF_SZ];
+   static _Thread_local unsigned count;
+   char *buf= bufArr[++count%N_BUFS];
+
+   memset(buf, 0, BUF_SZ);
 
    switch(ai->ai_family) {
       case AF_INET: {
             struct sockaddr_in *sin= (struct sockaddr_in*)ai->ai_addr;
-            rtn= inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof(buf)-1);
+            rtn= inet_ntop(AF_INET, &sin->sin_addr, buf, BUF_SZ-1);
          } break;
 
       case AF_INET6: {
             struct sockaddr_in6 *sin6= (struct sockaddr_in6*)ai->ai_addr;
-            rtn= inet_ntop(AF_INET6, &sin6->sin6_addr, buf, sizeof(buf)-1);
+            rtn= inet_ntop(AF_INET6, &sin6->sin6_addr, buf, BUF_SZ-1);
          } break;
 
       default:
@@ -969,5 +975,7 @@ addrinfo_2_addr(const struct addrinfo *ai)
 
 abort:
    return rtn;
+#undef BUF_SZ
+#undef N_BUFS
 }
 
