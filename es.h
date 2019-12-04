@@ -28,7 +28,7 @@ ES_registerFd (
  * fd: the file descriptor to be registered.
  * events: event bits to monitor (see: man 2 poll).
  * callback_f:  callback function for when activity is detected.
- * ctxt: Pointer which will be passed as the last argument to callback_f().
+ * ctxt: Pointer which will be passed as the first argument to callback_f().
  *
  * RETURNS:
  * If successful, a positive integer which can be used to unregister the callback.
@@ -48,7 +48,7 @@ ES_registerSignal (
  *
  * signum: Unix signal number of interest (type "trap -l" on command line to see a list of signals)
  * callback_f:  callback function for when activity is detected.
- * ctxt: Pointer which will be passed as the last argument to callback_f().
+ * ctxt: Pointer which will be passed as the first argument to callback_f().
  *
  * RETURNS:
  * If successful, a positive integer which can be used to unregister the callback.
@@ -67,7 +67,7 @@ ES_registerVSignal (
  *
  * signum: Any integer number which is meaningful to your application.
  * callback_f:  callback function for when activity is detected.
- * ctxt: Pointer which will be passed as the last argument to callback_f().
+ * ctxt: Pointer which will be passed as the first argument to callback_f().
  *
  * RETURNS:
  * If successful, a positive integer which can be used to unregister the callback.
@@ -103,7 +103,7 @@ ES_registerTimer (
  * interval_ms: How many milliseconds to wait between successive firings.
  *              if this is 0, the timer is single shot.
  * callback_f:  callback function for when timer expires.
- * ctxt: Pointer which will be passed as the last argument to callback_f().
+ * ctxt: Pointer which will be passed as the first argument to callback_f().
  *
  * RETURNS:
  * If successful, a positive integer which can be used to unregister the callback.

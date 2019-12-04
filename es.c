@@ -431,7 +431,7 @@ ES_registerVSignal (
  *
  * signum: Any integer number which is meaningful to your application.
  * callback_f:  callback function for when activity is detected.
- * ctxt: Pointer which will be passed as the last argument to callback_f().
+ * ctxt: Pointer which will be passed as the first argument to callback_f().
  *
  * RETURNS:
  * If successful, a positive integer which can be used to unregister the callback.
