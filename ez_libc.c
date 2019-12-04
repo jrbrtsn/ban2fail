@@ -92,8 +92,9 @@ FILE* _ez_popen (
       const char *type
       )
 {
+   errno= 0;
    FILE *rtn= popen (command, type);
-   if (!rtn) {
+   if (!rtn || errno) {
       _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "popen(\"%s\", \"%s\") failed", command, type);
       abort();
    }
@@ -524,6 +525,7 @@ int _ez_open(
 
 }
 
+/***************************************************/
 int _ez_access(
    const char *fileName,
    int lineNo,
@@ -547,3 +549,159 @@ int _ez_access(
 
 }
 
+/***************************************************/
+char *_ez_strptime(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      const char *s,
+      const char *format,
+      struct tm *tm
+      )
+{
+   char *rtn= strptime (s, format, tm);
+   if(rtn) return rtn;
+
+   _eprintf(fileName, lineNo, funcName, "strptime(\"%s\",\"%s\") failed", s, format);
+   abort();
+
+}
+
+/***************************************************/
+int _ez_seteuid(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      uid_t euid
+      )
+{
+   int rtn= seteuid (euid);
+   if(0 == rtn) return 0;
+
+   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "seteuid(%d) failed", (int)euid);
+   abort();
+}
+
+/***************************************************/
+int _ez_setegid(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      gid_t egid
+      )
+{
+   int rtn= setegid (egid);
+   if(0 == rtn) return 0;
+
+   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "setegid(%d) failed", (int)egid);
+   abort();
+}
+
+/***************************************************/
+struct group* _ez_getgrnam(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      const char *name
+      )
+{
+   errno= 0;
+   struct group *rtn= getgrnam (name);
+
+   if(rtn) return rtn;
+
+   switch(errno) {
+      case EINTR:
+      case EIO:
+      case EMFILE:
+      case ENFILE:
+      case ENOMEM:
+      case ERANGE:
+         return NULL;
+
+   }
+      
+   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "getgrnam(\"%s\") failed", name);
+   abort();
+
+}
+
+/***************************************************/
+int _ez_chown(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      const char *pathname,
+      uid_t owner,
+      gid_t group
+      )
+{
+   int rtn= chown (pathname, owner, group);
+   if(0 == rtn) return rtn;
+
+   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "chown(\"%s\", %d, %d) failed", pathname, (int)owner, (int)group);
+   abort();
+}
+
+/***************************************************/
+int _ez_fchown(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      int fd,
+      uid_t owner,
+      gid_t group
+      )
+{
+   int rtn= fchown (fd, owner, group);
+   if(0 == rtn) return rtn;
+
+   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fchown() failed");
+   abort();
+}
+
+/***************************************************/
+int _ez_fchmod(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      int fd,
+      mode_t mode
+      )
+{
+   int rtn= fchmod (fd, mode);
+   if(0 == rtn) return rtn;
+
+   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "fchmod() failed");
+   abort();
+}
+
+/***************************************************/
+int _ez_setuid(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      uid_t uid
+      )
+{
+   int rtn= setuid (uid);
+   if(0 == rtn) return 0;
+
+   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "setuid(%d) failed", (int)uid);
+   abort();
+}
+
+/***************************************************/
+int _ez_setgid(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      gid_t gid
+      )
+{
+   int rtn= setgid (gid);
+   if(0 == rtn) return 0;
+
+   _sys_eprintf((const char*(*)(int))strerror, fileName, lineNo, funcName, "setgid(%d) failed", (int)gid);
+   abort();
+}

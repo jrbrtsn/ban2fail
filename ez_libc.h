@@ -30,16 +30,29 @@ glibc calls with boilerplate error handling.
 
 #define _GNU_SOURCE
 #include <dirent.h>
+#include <grp.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define ez_strptime(s, format, tm) \
+   _ez_strptime(__FILE__, __LINE__, __FUNCTION__, s, format, tm)
+char *_ez_strptime(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      const char *s,
+      const char *format,
+      struct tm *tm
+      );
 
 #define ez_access(pathname, mode) \
    _ez_access(__FILE__, __LINE__, __FUNCTION__, pathname, mode)
@@ -341,6 +354,83 @@ int _ez_flock (
       int operation
       );
 
+#define ez_setuid(uid) \
+         _ez_setuid(__FILE__, __LINE__, __FUNCTION__, uid)
+int _ez_setuid(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      uid_t uid
+      );
+
+#define ez_setgid(gid) \
+         _ez_setgid(__FILE__, __LINE__, __FUNCTION__, gid)
+int _ez_setgid(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      gid_t gid
+      );
+
+
+#define ez_seteuid(euid) \
+         _ez_seteuid(__FILE__, __LINE__, __FUNCTION__, euid)
+int _ez_seteuid(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      uid_t euid
+      );
+
+#define ez_setegid(egid) \
+         _ez_setegid(__FILE__, __LINE__, __FUNCTION__, egid)
+int _ez_setegid(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      gid_t egid
+      );
+
+#define ez_getgrnam(name) \
+         _ez_getgrnam(__FILE__, __LINE__, __FUNCTION__, name)
+struct group* _ez_getgrnam(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      const char *name
+      );
+
+#define ez_chown(pathname, owner, group) \
+         _ez_chown(__FILE__, __LINE__, __FUNCTION__, pathname, owner, group)
+int _ez_chown(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      const char *pathname,
+      uid_t owner,
+      gid_t group
+      );
+
+#define ez_fchown(fd, owner, group) \
+         _ez_fchown(__FILE__, __LINE__, __FUNCTION__, fd, owner, group)
+int _ez_fchown(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      int fd,
+      uid_t owner,
+      gid_t group
+      );
+
+#define ez_fchmod(fd, mode) \
+         _ez_fchmod(__FILE__, __LINE__, __FUNCTION__, fd, mode)
+int _ez_fchmod(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      int fd,
+      mode_t mode
+      );
 
 #ifdef __cplusplus
 }

@@ -74,15 +74,28 @@ OFFENTRY_cache_constructor(OFFENTRY *self, const char *cacheFileEntry)
 
    common_constructor(self);
 
-   int rc= sscanf(cacheFileEntry, "%u %45s %2s"
-         ,&self->count
-         ,self->addr
-         ,self->cntry);
+   long long ll;
 
-   if(2 > rc) {
+   int rc= sscanf(cacheFileEntry, "%u %u %lld %45s %2s"
+         , &self->count
+         , &self->severity
+         , &ll
+         , self->addr
+         , self->cntry
+         );
+
+   if(4 > rc) {
       eprintf("ERROR: failed to interpret \"%s\"", cacheFileEntry);
       goto abort;
    }
+
+   self->latest= ll;
+
+#ifdef qqDEBUG
+   if(self->severity) {
+eprintf("%s : %u", self->addr, self->severity);
+   }
+#endif
 
    rtn= self;
 abort:
@@ -102,13 +115,28 @@ OFFENTRY_destructor(OFFENTRY *self)
 }
 
 void
-OFFENTRY_register(OFFENTRY *self)
+OFFENTRY_register(OFFENTRY *self, unsigned severity, time_t when)
 /********************************************************
  * Register the current failure try.
  */
 {
    /* Keep track of count */
    ++self->count;
+
+#ifdef qqDEBUG
+   if(severity) {
+      eprintf("Severity= %u", severity);
+   }
+#endif
+
+   /* Keep track of most severe match */
+   if(self->severity < severity)
+      self->severity= severity;
+
+   /* Keep track of the most recent offense time */
+   if(self->latest < when)
+      self->latest= when;
+
 }
 
 
@@ -118,8 +146,10 @@ OFFENTRY_cacheWrite(OFFENTRY *self, FILE *fh)
  * Write to the cache file in a form we can read later.
  */
 {
-   ez_fprintf(fh, "%u %s %s\n"
+   ez_fprintf(fh, "%u %u %lld %s %s\n"
          , self->count
+         , self->severity
+         , (long long)self->latest
          , self->addr
          , self->cntry
          );
@@ -133,11 +163,12 @@ OFFENTRY_print(OFFENTRY *self, FILE *fh)
  */
 {
    ez_fprintf(fh,
-"\tLOGENTRY %p { addr= \"%s\", cntry= \"%2s\" count= %u }\n"
+"\tLOGENTRY %p { addr= \"%s\", cntry= \"%2s\" count= %u, severity= %u }\n"
          , self
          , self->addr
          , self->cntry
          , self->count
+         , self->severity
          );
    return 0;
 }
@@ -158,6 +189,12 @@ OFFENTRY_map_addr(OFFENTRY *self, MAP *h_rtnMap)
    }
 
    e->count += self->count;
+
+   if(e->severity < self->severity)
+      e->severity= self->severity;
+
+   if(e->latest < self->latest)
+      e->latest= self->latest;
    return 0;
 }
 
@@ -169,5 +206,46 @@ OFFENTRY_offenseCount(OFFENTRY *self, unsigned *h_sum)
 {
    *h_sum += self->count;
 //eprintf("%s numItems= %u", self->addr, PTRVEC_numItems(&self->rptObj_vec));
+   return 0;
+}
+
+int
+OFFENTRY_list(OFFENTRY *self, FILE *fh, int flags, unsigned nAllowed)
+/********************************************************
+ * Print in listing form
+ */
+{
+   static const struct bitTuple BlockBitTuples[]= {
+      {.name= "BLK", .bit= BLOCKED_FLG},
+      {.name= "+blk+", .bit= WOULD_BLOCK_FLG},
+      {.name= "-blk-", .bit= UNJUST_BLOCK_FLG},
+      {.name= "WL",   .bit= WHITELIST_FLG},
+      {/* Terminating member */}
+   };
+
+   const static struct bitTuple dns_flagsArr[]= {
+      {.name= "~", .bit= PDNS_FWD_FAIL_FLG},
+      {.name= "!!", .bit= PDNS_FWD_NONE_FLG},
+      {.name= "NXDOMAIN", .bit= PDNS_NXDOMAIN_FLG},
+      {.name= "SERVFAIL", .bit= PDNS_SERVFAIL_FLG},
+      {}
+   };
+
+
+   const static char *dns_fmt= "%u %-13s %-15s\t%5u/%-4d offenses %s [%s] %s %s\n",
+                     *fmt= "%u %-13s %-15s\t%5u/%-4d offenses %s [%s]\n";
+
+   ez_fprintf(fh, self->dns.flags ? dns_fmt : fmt
+         , self->severity
+         , self->latest ? local_strftime(&self->latest, "%b %d %H:%M") : ""
+         , self->addr
+         , self->count
+         , nAllowed
+         , self->cntry[0] ? self->cntry : "--"
+         , bits2str(flags, BlockBitTuples)
+         , self->dns.name ? self->dns.name : ""
+         , bits2str(self->dns.flags, dns_flagsArr)
+         );
+
    return 0;
 }

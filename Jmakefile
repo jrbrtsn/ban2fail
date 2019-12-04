@@ -32,6 +32,8 @@ src := \
        pdns.c \
        ptrvec.c \
        str.c \
+       target.c \
+       timestamp.c \
        util.c \
 
    libs := z crypto GeoIP pthread db

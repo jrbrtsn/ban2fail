@@ -29,10 +29,14 @@
 
 /* One of these for each offense found in a log file */
 typedef struct _OFFENTRY {
-   unsigned logfile_ndx;
+
+   unsigned count,
+            severity;
+
+   time_t latest;
+
    char addr[46],
         cntry[3];
-   unsigned count;
 
    /* This data populated by PDNS_lookup() */
    struct {
@@ -78,18 +82,10 @@ OFFENTRY_destructor(OFFENTRY *self);
  */
 
 void
-OFFENTRY_register(OFFENTRY *self);
+OFFENTRY_register(OFFENTRY *self, unsigned severity, time_t when);
 /********************************************************
  * Register the current failure try.
  */
-
-#if 0
-int
-OFFENTRY_is_blocked_country(const OFFENTRY *self);
-/********************************************************
- * Return 1 if the country is blocked, or 0.
- */
-#endif
 
 int
 OFFENTRY_cacheWrite(OFFENTRY *self, FILE *fh);
@@ -101,6 +97,12 @@ int
 OFFENTRY_print(OFFENTRY *self, FILE *fh);
 /********************************************************
  * Print a human readable representation of *self.
+ */
+
+int
+OFFENTRY_list(OFFENTRY *self, FILE *fh, int flags, unsigned nAllowed);
+/********************************************************
+ * Print in listing form
  */
 
 int

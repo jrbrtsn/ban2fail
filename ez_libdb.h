@@ -101,6 +101,16 @@ int _ez_db_close(
       u_int32_t flags
       );
 
+#define ez_db_fd(db, fdp) \
+         _ez_db_fd(__FILE__, __LINE__, __FUNCTION__, db, fdp)
+int _ez_db_fd(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      DB *db,
+      int *fdp
+      );
+
 #ifdef __cplusplus
 }
 #endif

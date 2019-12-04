@@ -76,7 +76,9 @@ initialize (void)
       }   
          
       fh= ez_popen(ipv->cmd, "r");
-
+#ifdef qqDEBUG
+      unsigned count= 0;
+#endif
       while(ez_fgets(lbuf, sizeof(lbuf)-1, fh)) {
 
          /* Filter all that looks uninteresting */
@@ -93,9 +95,15 @@ initialize (void)
             eprintf("WARNING: duplicate iptable entry for %s", addr);
          else
             MAP_addStrKey(&S.addr_map, addr, strdup(addr));
+#ifdef qqDEBUG
+         ++count;
+#endif
       }
       ez_pclose(fh);
       regfree(&re);
+#ifdef qqDEBUG
+eprintf("%s got %u entries", ipv->cmd, count);
+#endif
    }
 }
 

@@ -145,7 +145,6 @@ int _ez_db_close(
       u_int32_t flags
       )
 {
-//eprintf("Closing database (%p)", db);
    int rtn= db->close(db, flags);
 
    if(!rtn) return 0;
@@ -153,5 +152,24 @@ int _ez_db_close(
    /* _sys_eprintf() will pass errno to db_sterror */
    errno= rtn;
    _sys_eprintf((const char*(*)(int))db_strerror, fileName, lineNo, funcName, "DB->close() failed");
+   abort();
+}
+
+/***************************************************/
+int _ez_db_fd(
+   const char *fileName,
+   int lineNo,
+   const char *funcName,
+      DB *db,
+      int *fdp
+      )
+{
+   int rtn= db->fd(db, fdp);
+
+   if(!rtn) return 0;
+
+   /* _sys_eprintf() will pass errno to db_sterror */
+   errno= rtn;
+   _sys_eprintf((const char*(*)(int))db_strerror, fileName, lineNo, funcName, "DB->fd() failed");
    abort();
 }

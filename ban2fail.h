@@ -26,6 +26,8 @@
 #define _GNU_SOURCE
 #include <regex.h>
 #include <stdint.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 #include "cfgmap.h"
 
@@ -59,6 +61,7 @@
 #define IP6TABLES "/usr/sbin/ip6tables" 
 #define GEOIP_DB "/usr/share/GeoIP/GeoIP.dat"
 #define GEOIP6_DB "/usr/share/GeoIP/GeoIPv6.dat"
+#define GROUP_NAME "adm"
 
 enum GlobalFlg_enum {
    GLB_VERBOSE_FLG            =1<<0,
@@ -74,6 +77,13 @@ enum GlobalFlg_enum {
    GLB_LONG_LISTING_MASK = GLB_LIST_CNTRY_FLG|GLB_LIST_ADDR_FLG
 };
 
+enum BlockedFlg_enum {
+   BLOCKED_FLG          =1<<0,
+   WOULD_BLOCK_FLG      =1<<1,
+   UNJUST_BLOCK_FLG     =1<<2,
+   WHITELIST_FLG        =1<<3
+};
+
 /* Singleton static object with global visibility */
 extern struct Global {
 
@@ -81,8 +91,21 @@ extern struct Global {
 
    MAP logType_map;
 
-   char *cacheDir,
-        *lockDir;
+   struct {
+      char *dir;
+      mode_t dir_mode,
+             file_mode;
+   } cache;
+
+   struct {
+      char *dir;
+      mode_t dir_mode,
+             file_mode;
+   } lock;
+
+   /* This should be set to adm */
+   gid_t gid;
+
 
    struct {
       FILE *fh;
@@ -98,6 +121,11 @@ extern struct Global {
    struct {
       const struct bitTuple *flags;
    } bitTuples;
+
+   struct {
+      time_t time_t;
+      struct tm tm;
+   } begin;
 
 } G;
 

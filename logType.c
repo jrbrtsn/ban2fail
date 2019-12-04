@@ -118,9 +118,9 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
    { /* Compute md5sum of all patterns put together */
       MD5_CTX md5ctx;
       MD5_Init(&md5ctx);
-      const struct target *t;
-      for(t= proto->targetArr; t->pattern; ++t) {
-         MD5_Update(&md5ctx, t->pattern, strlen(t->pattern));
+      const Target *t;
+      for(t= proto->targetArr; t->rxArr; ++t) {
+         Target_MD5_update(t, &md5ctx);
       }
       static unsigned char sum[16];
       MD5_Final(sum, &md5ctx);
@@ -131,7 +131,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
    /* At this point we can call LOGTYPE_cacheName() */
 
    /* Keep the name of this logType's cache directory */
-   rc= snprintf(CacheDname, sizeof(CacheDname), "%s/%s", G.cacheDir, LOGTYPE_cacheName(self));
+   rc= snprintf(CacheDname, sizeof(CacheDname), "%s/%s", G.cache.dir, LOGTYPE_cacheName(self));
 
    { /*** Compute md5sum for each log file, then scan of read from cache ***/
 
@@ -206,7 +206,7 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
          LOGFILE *f;
 
          /* Use the cache, if available */
-         if(!access(CacheFname, F_OK))
+         if(!ez_access(CacheFname, F_OK))
          {
 
             /* Construct object from cache file */
@@ -215,8 +215,9 @@ LOGTYPE_proto_constructor(LOGTYPE *self, const struct logProtoType *proto)
 
          } else { /* Scan the log file, write to new cache */
 
-            if(access(CacheDname, F_OK)) {
-               ez_mkdir(CacheDname, 0770);
+            if(ez_access(CacheDname, F_OK)) {
+               ez_mkdir(CacheDname, G.cache.dir_mode);
+               ez_chown(CacheDname, getuid(), G.gid);
             }
 
             /* Construct object from log file */
@@ -328,26 +329,43 @@ LOGTYPE_init(CFGMAP *h_map, char *pfix)
       }
    }
 
-   { /*--- Get all regex entries ---*/
-      snprintf(symBuf, len, "%s\\REGEX", pfix);
+   { /*--- Get the TIMESTAMP entry ---*/
+      snprintf(symBuf, len, "%s\\TIMESTAMP", pfix);
+      const char *val= CFGMAP_find_last_value(h_map, symBuf);
+
+      if(val) {
+
+         snprintf(symBuf, len, "%s\\%s", pfix, val);
+
+         if(TS_init(&proto.ts, h_map, symBuf)) {
+            eprintf("ERROR: TS_init() failed.");
+            goto abort;
+         }
+      }
+   }
+
+
+   { /*--- Get all TARGET entries ---*/
+
+      snprintf(symBuf, len, "%s\\TARGET", pfix);
 
       unsigned nFound= CFGMAP_find_tuples(h_map, rtn_arr, symBuf);
 
       /* Get enough object to include a terminating entry */
-      struct target targetArr[nFound+1];
+      Target targetArr[nFound+1];
       /* Clear all bits in array */
-      memset(targetArr, 0, sizeof(struct target)*(nFound+1));
+      memset(targetArr, 0, sizeof(Target)*(nFound+1));
 
       proto.targetArr= targetArr;
 
       for(unsigned i= 0; i < nFound; ++i) {
          const struct CFGMAP_tuple *tpl= rtn_arr + i; 
-         struct target *tg= targetArr + i;
-         tg->pattern= tpl->value;
-         if(regex_compile(&tg->re, tg->pattern, REG_EXTENDED)) {   
-            eprintf("ERROR: regex_compile(\"%s\") failed.", tg->pattern);
+         Target *tg= targetArr + i;
+         snprintf(symBuf, len, "%s\\%s", pfix, tpl->value);
+         if(Target_init(tg, h_map, symBuf)) {
+            eprintf("ERROR: Target_init() failed.");
             goto abort;
-         }   
+         }
       }
 
       /* Create the LOGTYPE object, place in global map */
@@ -362,11 +380,15 @@ LOGTYPE_init(CFGMAP *h_map, char *pfix)
       /* Place int the global map */
       MAP_addStrKey(&G.logType_map, LOGTYPE_cacheName(obj), obj);
 
-      /* Free regex pattern data */
+      /* Free regex stuff */
       for(unsigned i= 0; i < nFound; ++i) {
-         struct target *tg= targetArr + i;
-         regfree(&tg->re);
+         Target *tg= targetArr + i;
+         Target_destructor(tg);
       }
+   }
+
+   if(TS_is_prepared(&proto.ts)) {
+      TS_destructor(&proto.ts);
    }
 
    rtn= 0;

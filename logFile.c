@@ -81,7 +81,7 @@ LOGFILE_cache_constructor(
 
    static char dbFname[PATH_MAX];
    snprintf(dbFname, sizeof(dbFname), "%s.db", cacheFname);
-   if(0 == access(dbFname, F_OK)) {
+   if(0 == ez_access(dbFname, F_OK)) {
       ez_db_create(&db, NULL, 0);
       ez_db_open(db, NULL, dbFname, NULL, DB_BTREE, DB_RDONLY, 0664);
    }
@@ -157,18 +157,10 @@ LOGFILE_log_constructor(
          lbuf[--line_len]= '\0';
 
       /* Search for a match in the targets */
-      for(struct target *tg= h_protoType->targetArr; tg->pattern; ++tg) {
-
-         /* If there is no match, continue looking */
-         regmatch_t matchArr[2];
-         if(0 != regexec(&tg->re, lbuf, 2, matchArr, 0) || -1 == matchArr[1].rm_so)
-            continue;
+      for(Target *tg= h_protoType->targetArr; Target_is_init(tg); ++tg) {
 
          static char addr[128];
-         unsigned len;
-         len= matchArr[1].rm_eo - matchArr[1].rm_so;
-         strncpy(addr, lbuf+matchArr[1].rm_so, sizeof(addr)-1);
-         addr[MIN(len, sizeof(addr)-1)]= '\0';
+         if(Target_scan(tg, addr, sizeof(addr), lbuf)) continue;
 
          OFFENTRY *e= MAP_findStrItem(&self->addr.offEntry_map, addr);
          if(!e) {
@@ -179,7 +171,15 @@ LOGFILE_log_constructor(
             MAP_addStrKey(&self->addr.offEntry_map, e->addr, e);
          }
 
-         OFFENTRY_register(e);
+         /* See if we can extract the date */
+         time_t when= 0;
+         if(TS_is_prepared(&h_protoType->ts)) {
+            if(TS_scan(&h_protoType->ts, &when, lbuf, &G.begin.tm)) {
+               eprintf("WARNING: TS_scan() failed.");
+            }
+         }
+
+         OFFENTRY_register(e, Target_severity(tg), when);
 
          { /* Keep ObsvTpl record of offense line in log file */
             ObsvTpl *ot= MAP_findStrItem(&self->addr.obsvTpl_map, e->addr);
@@ -190,9 +190,8 @@ LOGFILE_log_constructor(
             }
 
             ObsvTpl_addObsv(ot, pos, line_len);
-
          }
-      }
+      } /* End of Target loop */
    } /* End of line reading loop */
 
    /* Take car of possible address reporting */
@@ -244,6 +243,8 @@ LOGFILE_writeCache(LOGFILE *self, const char *fname)
    DB *dbh= NULL;
 
    FILE *fh= ez_fopen(fname, "w");
+   ez_fchown(fileno(fh), getuid(), G.gid);
+   ez_fchmod(fileno(fh), G.cache.file_mode);
 
    /* Writes all OFFENTRY object to fh */
    rc= MAP_visitAllEntries(&self->addr.offEntry_map, (int(*)(void*,void*))OFFENTRY_cacheWrite, fh);
@@ -258,7 +259,8 @@ LOGFILE_writeCache(LOGFILE *self, const char *fname)
 
       ez_db_create(&dbh, NULL, 0);
       assert(dbh);
-      ez_db_open(dbh, NULL, dbFname, NULL, DB_BTREE, DB_CREATE, 0664);
+      ez_db_open(dbh, NULL, dbFname, NULL, DB_BTREE, DB_CREATE, G.cache.file_mode);
+      ez_chown(dbFname, getuid(), G.gid);
 
       /* This will write all entries in the map do the database */
       MAP_visitAllEntries(&self->addr.obsvTpl_map, (int(*)(void*,void*))ObsvTpl_db_put, dbh);

@@ -21,6 +21,7 @@
 #include <getopt.h>
 #include <signal.h>
 #include <sys/file.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "addrRpt.h"
@@ -37,13 +38,6 @@
 #include "pdns.h"
 #include "str.h"
 #include "util.h"
-
-enum {
-   BLOCKED_FLG          =1<<0,
-   WOULD_BLOCK_FLG      =1<<1,
-   UNJUST_BLOCK_FLG     =1<<2,
-   WHITELIST_FLG        =1<<3
-};
 
 /*==================================================================*/
 /*=================== Support structs ==============================*/
@@ -67,6 +61,7 @@ static int addrRpt_serial_qsort(const void *p1, const void *p2);
 static int cntryStat_count_qsort(const void *p1, const void *p2);
 static int configure(CFGMAP *h_cfgmap, const char *pfix);
 static int logentry_count_qsort(const void *p1, const void *p2);
+static int logentry_latest_qsort(const void *p1, const void *p2);
 static int map_byCountries(OFFENTRY *e, MAP *h_map);
 static int stub_init(CFGMAP *map, char *symStr);
 
@@ -83,13 +78,21 @@ static const struct bitTuple GlobalFlagBitTuples[]= {
 };
 
 struct Global G= {
-   .cacheDir= CACHEDIR,
-   .lockDir= LOCKDIR,
+   .cache= {
+      .dir= CACHEDIR,
+      .dir_mode=0770,
+      .file_mode=0660
+   },
+   .lock= {
+      .dir= LOCKDIR,
+      .dir_mode= 0770,
+      .file_mode=0660
+   },
 
    .version= {
       .major= 0,
       .minor= 13,
-      .patch= 3
+      .patch= 4
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -98,14 +101,6 @@ struct Global G= {
 const static struct initInfo S_initInfo_arr[] = {
    {.symStr= "MAX_OFFENSES",     .init_f= MAXOFF_init},
    {.symStr= "LOGTYPE",          .init_f= LOGTYPE_init},
-   {/* Terminating member */}
-};
-
-static const struct bitTuple BlockBitTuples[]= {
-   {.name= "BLK", .bit= BLOCKED_FLG},
-   {.name= "+blk+", .bit= WOULD_BLOCK_FLG},
-   {.name= "-blk-", .bit= UNJUST_BLOCK_FLG},
-   {.name= "WL",   .bit= WHITELIST_FLG},
    {/* Terminating member */}
 };
 
@@ -169,6 +164,11 @@ main(int argc, char **argv)
 
    /* Prepare static data */
    // global
+   struct group *gr= ez_getgrnam(GROUP_NAME);
+   G.gid= gr->gr_gid;
+
+   /* Default sending listing to stdout */
+   G.rpt.fh= stdout;
    MAP_constructor(&G.logType_map, 10, 10);
    MAP_constructor(&G.rpt.AddrRPT_map, 10, 10);
 
@@ -232,8 +232,8 @@ main(int argc, char **argv)
 
             case 't':
                G.flags |= GLB_DONT_IPTABLE_FLG;
-               G.cacheDir= CACHEDIR "-test";
-               G.lockDir= LOCKDIR "-test";
+               G.cache.dir= CACHEDIR "-test";
+               G.lock.dir= LOCKDIR "-test";
                confFile= optarg;
                break;
 
@@ -300,11 +300,13 @@ main(int argc, char **argv)
 
    } /* Done with command line arguments */
 
-   /* Make sure we will be able to run iptables */
-   if(getuid()) {
-      eprintf("ERROR: You must be root to run iptables!");
-      goto abort;
-   }
+   /* So we can run iptables */
+   ez_setuid(0);
+   ez_setgid(G.gid);
+
+   /* Get a time when the scan began */
+   G.begin.time_t= time(NULL);
+   G.begin.tm= *localtime(&G.begin.time_t);
 
    /* Read the configuration file */
    { /*=========================================================*/
@@ -312,6 +314,9 @@ main(int argc, char **argv)
          eprintf("ERROR: failed to read configuration from \"%s\"", confFile);
          goto abort;
       }
+
+      /* For debugging this can be useful */
+//      CFGMAP_print(&S.cfgmap, G.rpt.fh);
 
       /* Just leave the S.cfgmap in place, so all the value strings
        * don't need to be copied.
@@ -321,21 +326,21 @@ main(int argc, char **argv)
    /* Obtain a file lock to protect cache files */
    /*===========================================================*/
    {
-      if(-1 == ez_access(G.lockDir, F_OK))
-         ez_mkdir(G.lockDir, 0750);
+      if(-1 == ez_access(G.lock.dir, F_OK)) {
+         ez_mkdir(G.lock.dir, G.lock.dir_mode);
+         ez_chown(G.lock.dir, getuid(), G.gid);
+      }
 
-      snprintf(S.fnameBuf, sizeof(S.fnameBuf), "%s/cache", G.lockDir);
+      snprintf(S.fnameBuf, sizeof(S.fnameBuf), "%s/cache", G.lock.dir);
       /* Make sure the file exists by open()'ing */
-      S.cacheLock_fd= ez_open(S.fnameBuf, O_CREAT|O_WRONLY|O_CLOEXEC, 0640);
-      assert(-1 != S.cacheLock_fd);
+      S.cacheLock_fd= ez_open(S.fnameBuf, O_CREAT|O_RDONLY|O_CLOEXEC, G.lock.file_mode);
+      ez_fchown(S.cacheLock_fd, getuid(), G.gid);
 
       /* Let's get a exclusive lock */
       // TODO: set SIGALRM to knock us out of blocked wait?
       int rc= ez_flock(S.cacheLock_fd, LOCK_EX);
    }
 
-   /* Default sending listing to stdout */
-   G.rpt.fh= stdout;
 #ifndef DEBUG
    /* if stdout is a tty, and listing is likely
     * to be long, then use $PAGER.
@@ -349,16 +354,19 @@ main(int argc, char **argv)
 
    /* Open our cache, instance file-specific LOGTYPE objects */
    { /*=============================================================*/
-      if(G.flags & GLB_FLUSH_CACHE_FLG && !access(G.cacheDir, F_OK)) {
-         ez_rmdir_recursive(G.cacheDir);
+      if(G.flags & GLB_FLUSH_CACHE_FLG &&
+         !ez_access(G.cache.dir, F_OK))
+      {
+         ez_rmdir_recursive(G.cache.dir);
       }
 
       /* Make the directory if needed */
-      if(access(G.cacheDir, F_OK)) {
+      if(ez_access(G.cache.dir, F_OK)) {
          /* errno will be set if access() fails */
          errno= 0;
 
-         ez_mkdir(G.cacheDir, 0750);
+         ez_mkdir(G.cache.dir, G.cache.dir_mode);
+         ez_chown(G.cache.dir, getuid(), G.gid);
       }
 
       if(G.flags & GLB_LONG_LISTING_MASK) {
@@ -398,7 +406,7 @@ main(int argc, char **argv)
 
       /* Check cache for logType directories not in our current map, and remove them */
       { /*---------------------------------------------------------------------*/
-         DIR *dir= ez_opendir(G.cacheDir);
+         DIR *dir= ez_opendir(G.cache.dir);
          struct dirent *entry;
 
          while((entry= ez_readdir(dir))) {
@@ -412,7 +420,7 @@ main(int argc, char **argv)
                continue;
 
             /* Make the path with filename */
-            snprintf(S.fnameBuf, sizeof(S.fnameBuf), "%s/%s", G.cacheDir, entry->d_name);
+            snprintf(S.fnameBuf, sizeof(S.fnameBuf), "%s/%s", G.cache.dir, entry->d_name);
 
             /* Remove unused directory & contents. */
             ez_rmdir_recursive(S.fnameBuf);
@@ -475,7 +483,7 @@ main(int argc, char **argv)
       assert(S.lePtrArr);
 
       MAP_fetchAllItems(&S.addr2logEntry_map, (void**)S.lePtrArr);
-      qsort(S.lePtrArr, nItems, sizeof(OFFENTRY*), logentry_count_qsort);
+      qsort(S.lePtrArr, nItems, sizeof(OFFENTRY*), logentry_latest_qsort);
 
       /* Special processing for DNS lookups */
       if(G.flags & GLB_DNS_LOOKUP_FLG) {
@@ -525,27 +533,7 @@ main(int argc, char **argv)
          if(G.flags & GLB_LIST_ADDR_FLG &&
             !(G.flags & GLB_DNS_FILTER_BAD_FLG && e->dns.flags & PDNS_BAD_MASK))
          {
-
-            const static struct bitTuple dns_flagsArr[]= {
-               {.name= "~", .bit= PDNS_FWD_FAIL_FLG},
-               {.name= "!!", .bit= PDNS_FWD_NONE_FLG},
-               {.name= "NXDOMAIN", .bit= PDNS_NXDOMAIN_FLG},
-               {.name= "SERVFAIL", .bit= PDNS_SERVFAIL_FLG},
-               {}
-            };
-
-            const static char *dns_fmt= "%-15s\t%5u/%-4d offenses %s [%s] %s %s\n",
-                              *fmt= "%-15s\t%5u/%-4d offenses %s [%s]\n";
-
-            ez_fprintf(G.rpt.fh, e->dns.flags ? dns_fmt : fmt
-                  , e->addr
-                  , e->count
-                  , nAllowed
-                  , e->cntry[0] ? e->cntry : "--"
-                  , bits2str(flags, BlockBitTuples)
-                  , e->dns.name ? e->dns.name : ""
-                  , bits2str(e->dns.flags, dns_flagsArr)
-                  );
+            OFFENTRY_list(e, G.rpt.fh, flags, nAllowed);
          }
 
       } /*--- End of OFFENTRY processing ---*/
@@ -599,10 +587,10 @@ main(int argc, char **argv)
       if(!(G.flags & GLB_DONT_IPTABLE_FLG)) {
 
          if(n2Block || n2Unblock) {
-            snprintf(S.fnameBuf, sizeof(S.fnameBuf), "%s/iptables", G.lockDir);
+            snprintf(S.fnameBuf, sizeof(S.fnameBuf), "%s/iptables", G.lock.dir);
             /* Make sure the file exists by open()'ing */
-            S.iptablesLock_fd= ez_open(S.fnameBuf, O_CREAT|O_WRONLY|O_CLOEXEC, 0640);
-            assert(-1 != S.iptablesLock_fd);
+            S.iptablesLock_fd= ez_open(S.fnameBuf, O_CREAT|O_WRONLY|O_CLOEXEC, G.lock.file_mode);
+            ez_fchown(S.iptablesLock_fd, getuid(), G.gid);
             /* Get an exclusive lock on the lockfile */
             ez_flock(S.iptablesLock_fd, LOCK_EX);
          }
@@ -684,6 +672,20 @@ abort:
 /*==================================================================*/
 /*============== Supporting functions ==============================*/
 /*==================================================================*/
+static int
+logentry_latest_qsort(const void *p1, const void *p2)
+/***************************************************************
+ * qsort functor puts large counts on top.
+ */
+{
+   const OFFENTRY *le1= *(const OFFENTRY *const*)p1,
+                  *le2= *(const OFFENTRY *const*)p2;
+
+   if(le1->latest > le2->latest) return -1;
+   if(le1->latest < le2->latest) return 1;
+   return logentry_count_qsort(p1, p2);
+}
+
 
 static int
 logentry_count_qsort(const void *p1, const void *p2)

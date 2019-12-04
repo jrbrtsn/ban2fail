@@ -24,14 +24,8 @@
 #include "ban2fail.h"
 #include "cfgmap.h"
 #include "map.h"
-
-/*==================================================================*/
-/*===================== target =====================================*/
-/*==================================================================*/
-struct target {
-   const char *pattern;
-   regex_t re;
-};
+#include "target.h"
+#include "timestamp.h"
 
 /*==================================================================*/
 /*===================== log file prototype =========================*/
@@ -39,7 +33,8 @@ struct target {
 struct logProtoType {
    const char *dir,
               *pfix;
-   struct target *targetArr;
+   TS ts; /* For log entry timestamps */
+   Target *targetArr;
 };
 
 /*==================================================================*/
