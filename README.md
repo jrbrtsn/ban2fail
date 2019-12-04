@@ -202,6 +202,18 @@ forward match) info *-a-*. In the list, DNS issues are presented like so:
 0 Dec 04 04:13  87.120.246.53       1/0    offenses BG [BLK] client.playtime.bg ~
 ```
 
+If you want to see the offending log lines for specific address(es), supply
+them on the command line like so:
+
+```
+user@srv:~$ ban2fail 208.187.162.100
+====== Report for 208.187.162.100 ======
+------- /var/log/exim4/mainlog -------------
+2019-12-04 12:08:15 H=(mail.spika.stream) [208.187.162.100] F=<first.class.turmeric.cbd-mgregory=robertsonoptical.com@spika.stream> rejected RCPT <mgregory@robertsonoptical.com>: 208.187.162.100 is listed at zen.spamhaus.org (127.0.0.3: https://www.spamhaus.org/sbl/query/SBLCSS)
+
+```
+
+
 ### Testing
 
 In test mode (-t flag) the presumption is that you are testing a modified
