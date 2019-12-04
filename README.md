@@ -2,9 +2,9 @@
 
 (C) 2019 John D. Robertson <john@rrci.com>
 
-**ban2fail** is a simple and efficient tool to coordinate log file scanning and
-iptables filtering. As the name implies, *ban2fail* was inspired by the popular
-*fail2ban* project (http://fail2ban.org).
+**ban2fail** is a simple and efficient tool to coordinate log file scanning,
+reporting, and iptables filtering. As the name implies, *ban2fail* was
+inspired by the popular *fail2ban* project (http://fail2ban.org).
 
 *ban2fail* started with a few hours of frenzied C hacking after my mail server
 was exploited to deliver spam for others who had cracked a user's SMTP send
