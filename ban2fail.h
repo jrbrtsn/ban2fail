@@ -106,7 +106,6 @@ extern struct Global {
    /* This should be set to adm */
    gid_t gid;
 
-
    struct {
       FILE *fh;
       MAP AddrRPT_map;

@@ -92,7 +92,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 13,
-      .patch= 4
+      .patch= 6
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -300,9 +300,22 @@ main(int argc, char **argv)
 
    } /* Done with command line arguments */
 
+   char *pager= NULL,
+        *rslt= getenv("PAGER");
+
+#if 0
+   /* Keep a copy of the pager environment variable */
+   if(rslt) pager= strdup(rslt);
+
    /* So we can run iptables */
    ez_setuid(0);
    ez_setgid(G.gid);
+
+   /* Restore the pager environment variable */
+   if(pager) {
+      if(setenv("PAGER", pager, 1)) assert(0);
+   }
+#endif
 
    /* Get a time when the scan began */
    G.begin.time_t= time(NULL);
@@ -472,6 +485,10 @@ main(int argc, char **argv)
 
       /* List by address. Make a addr_map of OFFENTRY objects with composite counts */
       MAP_visitAllEntries(&G.logType_map, (int(*)(void*,void*))LOGTYPE_map_addr, &S.addr2logEntry_map);
+
+      /* So we can run iptables */
+      ez_setuid(0);
+      ez_setgid(G.gid);
 
       /* Pick up remaining blocked addresses */
       IPTABLES_fill_in_missing(&S.addr2logEntry_map);
