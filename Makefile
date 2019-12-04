@@ -3,7 +3,7 @@ libsDir := $(baseDir)/libs
 projectName := ban2fail
 versions := debug release
 cc_exe := ban2fail fsckdns
-install_dir := /usr/local/bin
+#install_dir := /usr/local/bin
 
 ########################################
 # Set up sources & libraries here.     #
@@ -32,6 +32,8 @@ src := \
        pdns.c \
        ptrvec.c \
        str.c \
+       target.c \
+       timestamp.c \
        util.c \
 
    libs := z crypto GeoIP pthread db
