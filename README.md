@@ -34,18 +34,43 @@ default that IP will be blocked.
 
 ```
 LOGTYPE auth {
+
+# Where to find the log files
    DIR= /var/log
    PREFIX= auth.log
 
-# imapd[20193]= Login failed user=redacted auth=redacted@nowhere.com host=[186.179.170.12]
-   REGEX= imapd.*Login failed.*\[([0-9.a-f:]+)\]$
+# How to read the timestamp
+   TIMESTAMP auth_ts {
+# isolates the timestamp from a line matched by a TARGET
+      REGEX= ^(.*) srv
+# Passed to strptime() to intrepret the timestamp string
+      STRPTIME= %b %d %T
+# These stamps do not include the year, so it is implied.
+      FLAGS= GUESS_YEAR
+   }
 
-# sshd[6165]= Failed password for invalid user user from 185.224.137.201 port 44865 ssh2
-   REGEX= sshd.*Failed password.*from ([0-9.a-f:]+) port [0-9]+ ssh2$
+   TARGET imap {
+# Pattern to search for, isolates the IP address
+      REGEX= imapd.*Login failed.*\[([0-9.a-f:]+)\]$
+# Assign this as the severity of the offense.
+      SEVERITY= 3
+   }
 
-# Unable to negotiate with 193.188.22.188 port ...
-#   REGEX= Unable to negotiate with ([0-9.]+) port
-   REGEX= Unable to negotiate with ([0-9.a-f:]+) port
+   TARGET ssh {
+      SEVERITY= 4
+      REGEX= sshd.*Failed password.*from ([0-9.a-f:]+) port [0-9]+ ssh2$
+      REGEX= sshd.*Invalid user.*from ([0-9.a-f:]+) port
+   }
+
+   TARGET negotiate_fail {
+      SEVERITY= 2
+      REGEX= Unable to negotiate with ([0-9.a-f:]+) port
+   }
+
+   TARGET dovecot {
+      SEVERITY= 3
+      REGEX= dovecot.*authentication failure.*rhost=([0-9.]+)
+   }
 
 }
 ```
@@ -74,24 +99,70 @@ IP is blocked. Offenses will naturally disappear as old logfiles are deleted by
 *logrotate*.
 
 ```
-# Take it easy on home boys
-MAX_OFFENSES 5 {
-   COUNTRY= US
-}
-
-# GeoIP doesn't know the location of every IP address
-MAX_OFFENSES 3 {
-   COUNTRY= unknown
-}
-
-# This is your whitelist: -1 means no limit.
+# Whitelist ourself
 MAX_OFFENSES -1 {
+# Put your server's IP addresses here
+#   IP= 1.2.3.4
+   IP= 127.0.0.1
+#   IP= dead:beef::20::32a
+   IP= ::1
+}
+
+# Allegedly legit servers
+MAX_OFFENSES 50 {
+
+# Google Ireland
+   IP= 2a00:1450:4864:20::32a
+   IP= 2a00:1450:4864:20::336
+
+# Google EU
+# Attempted to break in
+#   IP= 35.205.240.168
+
+# Google US
+   IP= 09.85.216.42
+# Attempted to break in
+#   IP= 130.211.246.128
+   IP= 209.85.166.194
+   IP= 209.85.166.195
+   IP= 209.85.208.67
+   IP= 209.85.214.194
+   IP= 209.85.215.173
+   IP= 209.85.215.175
+   IP= 209.85.215.193
+   IP= 209.85.216.42
+   IP= 2607:f8b0:4864:20::1034
+   IP= 2607:f8b0:4864:20::a46
+
+# Yahoo
+   IP= 106.10.244.139
+
+# Outlook
+   IP= 40.92.4.30
+   IP= 40.107.73.61
+   IP= 40.107.74.48
+   IP= 40.107.74.72 
+   IP= 40.107.76.74
+   IP= 40.107.79.52
+   IP= 40.107.79.59
+   IP= 40.107.80.40
+   IP= 40.107.80.53
+   IP= 40.107.80.78
+   IP= 40.107.82.75
+   IP= 52.101.129.30
+   IP= 52.101.132.108
+   IP= 52.101.136.79
+   IP= 52.101.140.230
+}
+
+# "trusted" addresses
+MAX_OFFENSES 200 {
 
 # me from home
-   IP= 205.144.171.37/20
+#   IP= 1.2.3.4/20
 
-# Some user
-   IP= 173.236.196.36
+# Customer
+#   IP= 5.6.7.8/24
 }
 ```
 
@@ -109,11 +180,27 @@ There are two primary modes in which *ban2fail* is used:
 
 ### Production
 
-In production mode it is expected that *ban2fail* is running from a cron job,
+In production mode it is expected that *ban2fail* is running non-interactively,
 and no output is printed unless addresses are (un)blocked. It is also possible
 to generate a listing of addresses, offense counts, and status with the -a
 command flag. Likewise, a listing of countries and offense counts is available
-with the -c flag.
+with the *-c* flag. In order to get DNS information for the *-a* flag, follow
+with a plus for all DNS info *-a+*, or a minus for only legit (backward &
+forward match) info *-a-*. In the list, DNS issues are presented like so:
+
+```
+# DNS is good
+0 Dec 04 11:04  185.31.204.22       1/0    offenses GB [BLK] mail.damianbasel.audise.com 
+
+# Reverse lookup does not match forward lookup
+0 Dec 04 08:47  103.238.80.23       2/0    offenses VN [BLK] example.com !
+
+# Forward DNS is unavailable
+4 Dec 04 10:54  106.51.230.190      2/0    offenses IN [BLK] broadband.actcorp.in !!
+
+# DNS is inconclusive due to lack of response from DNS servers
+0 Dec 04 04:13  87.120.246.53       1/0    offenses BG [BLK] client.playtime.bg ~
+```
 
 ### Testing
 
@@ -138,16 +225,28 @@ about any modern Linux distro. It uses the following libraries:
 
 + *libcrypto* from the libssl package, for md5 checksums
 
-+ *libgeoip* to identify the country of origin for IP addresses
++ *libGeoIP* to identify the country of origin for IP addresses
 
 + *libz* to read compressed log files
+
++ *libpthread* for parallel DNS lookups (200 simulataneous)
+
++ *libdb=5.3* caching of offense location and size in log files
 
 Build and install like so:
 
 ```
 make release
-sudo make install
+make install
 ```
 
 The executable will be placed in "/usr/local/bin".
+
+In order to run *ban2fail* as a systemd service which actively monitors log
+files, put the service file *ban2fail.service* in place as well as placing
+*ban2fail.sh* in '/usr/local/share/ban2fail/'.
+
+*ban2fail.sh* can also be tested from the command line.  The user must belong to
+group 'adm' in order to run iptables, which is accomplished via setuid() at the
+appropriate time.
 
