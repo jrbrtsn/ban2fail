@@ -12,7 +12,7 @@ password. After inspecting the log files I realized that crackers are now using
 widely distributed attacks, and that I would need an extremely efficient tool
 that could run in a fraction of a second on my rather modest Linode virtual
 server to have a chance of stopping them. Here are the timing results for a
-typical scan on my wimpy server:
+typical scan on my server:
 
 ```
 real    0m0.269s
