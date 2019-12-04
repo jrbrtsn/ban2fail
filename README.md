@@ -243,7 +243,7 @@ about any modern Linux distro. It uses the following libraries:
 
 + *libpthread* for parallel DNS lookups (200 simulataneous)
 
-+ *libdb=5.3* caching of offense location and size in log files
++ *libdb* caching of offense location and size in log files
 
 Build and install like so:
 
