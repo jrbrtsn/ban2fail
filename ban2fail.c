@@ -92,7 +92,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 13,
-      .patch= 7
+      .patch= 8
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -262,7 +262,7 @@ main(int argc, char **argv)
 "%s [options] [-t confFile] [addr1 addr2 ...]\n"
 "  addr1 ...  print offending lines from logfiles for these addresses\n"
 "  --help\tprint this usage message.\n"
-"  -a[+]\t\tList results by Address. '+' to perform DNS reverse lookups.\n"
+"  -a[+|-]\tList results by Address. '+' to perform DNS lookups, '-' to filter riff raff.\n"
 "  -c\t\tlist results by Country\n"
 "  -F\t\tFlush the cache\n"
 "  -s\t\tlist Summary results only\n"
