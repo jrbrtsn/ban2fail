@@ -23,6 +23,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include "ez_libpthread.h"
 #include "msgqueue.h"
 #include "util.h"
 
@@ -66,8 +67,7 @@ MSGQUEUE_submitMsg (MSGQUEUE * self, const void *msgBuf)
 {
   int rtn = 0;
 
-  if (pthread_mutex_lock (&self->mtx))
-    assert (0);
+  ez_pthread_mutex_lock (&self->mtx);
 
   if (self->numItems == self->maxItems)
     {
@@ -87,8 +87,7 @@ MSGQUEUE_submitMsg (MSGQUEUE * self, const void *msgBuf)
   ++self->numItems;
 
 abort:
-  if (pthread_mutex_unlock (&self->mtx))
-    assert (0);
+  ez_pthread_mutex_unlock (&self->mtx);
   return rtn;
 }
 
@@ -100,8 +99,7 @@ MSGQUEUE_extractMsg (MSGQUEUE * self, void *msgBuf)
 {
   int rtn = 0;
 
-  if (pthread_mutex_lock (&self->mtx))
-    assert (0);
+  ez_pthread_mutex_lock (&self->mtx);
   if (!self->numItems)
     {
       rtn = EOF;
@@ -115,8 +113,7 @@ MSGQUEUE_extractMsg (MSGQUEUE * self, void *msgBuf)
     self->head = (self->head + 1) % self->maxItems;
 
 abort:
-  if (pthread_mutex_unlock (&self->mtx))
-    assert (0);
+  ez_pthread_mutex_unlock (&self->mtx);
   return rtn;
 }
 
@@ -135,8 +132,7 @@ MSGQUEUE_checkQueue (MSGQUEUE * self,
   unsigned int i;
   void *ptr;
 
-  if (pthread_mutex_lock (&self->mtx))
-    assert (0);
+  ez_pthread_mutex_lock (&self->mtx);
 
   if (!self->numItems)
     goto abort;
@@ -151,8 +147,7 @@ MSGQUEUE_checkQueue (MSGQUEUE * self,
     }
 
 abort:
-  if (pthread_mutex_unlock (&self->mtx))
-    assert (0);
+  ez_pthread_mutex_unlock (&self->mtx);
   return rtn;
 }
 

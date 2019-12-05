@@ -9,7 +9,8 @@
 #include "util.h"
 #include "map.h"
 #include "msgqueue.h"
-#include "es.h"
+#include "ez_es.h"
+#include "ez_libpthread.h"
 
 /* Types of registered callbacks */
 enum ES_type {
@@ -318,7 +319,7 @@ initialize()
  */
 {
   /* Get the global mutex */
-  if(pthread_mutex_lock(&S.mtx)) assert (0);
+  ez_pthread_mutex_lock(&S.mtx);
 
    /* Processwide static data */
    if(!(S.flags & GLOBAL_INIT_FLG)) {
@@ -328,7 +329,7 @@ initialize()
       MAP_constructor(&S.vsig.thrd_ts_map, 10, 10);
    }
    /* Release the global mutex */
-   if(pthread_mutex_unlock(&S.mtx)) assert (0);
+   ez_pthread_mutex_unlock(&S.mtx);
 
    /* Per-thread static data */
    PTRVEC_constructor(&TS.fd_vec, 10);
@@ -344,15 +345,15 @@ initialize()
    TS.tid= pthread_self();
 
    /* Add ourself to the vsig thread to TS map */
-   if(pthread_mutex_lock(&S.vsig.mtx)) assert (0);
+   ez_pthread_mutex_lock(&S.vsig.mtx);
    MAP_addTypedKey(&S.vsig.thrd_ts_map, TS.tid, &TS);
-   if(pthread_mutex_unlock(&S.vsig.mtx)) assert (0);
 
    /*--- virtual signal infrastructure ---*/
    MSGQUEUE_constructor(&TS.vsig.mq, sizeof(int), VSIG_QUEUE_MAX);
    MAP_constructor(&TS.vsig.map, 10, 10);
    /* Register a signal handler for SIGUSR2 so we can have virtual signals. */
-   if(-1 == ES_registerSignal(SIGUSR2, sigusr2_h, NULL)) assert(0);
+   ez_ES_registerSignal(SIGUSR2, sigusr2_h, NULL);
+   ez_pthread_mutex_unlock(&S.vsig.mtx);
 
 }
 
@@ -843,7 +844,7 @@ ES_spawn_thread_sched(
   }
 
   /* Get the global mutex */
-  if(pthread_mutex_lock(&S.spawn.mtx)) assert (0);
+  ez_pthread_mutex_lock(&S.spawn.mtx);
 
   /* Get the condition ready for use */
   pthread_cond_init(&S.spawn.cond, NULL);
@@ -852,29 +853,25 @@ ES_spawn_thread_sched(
   S.spawn.release_parent= 0;
 
   /* Get the condition mutex */
-  if(pthread_mutex_lock(&S.spawn.cond_mtx)) assert (0);
+  ez_pthread_mutex_lock(&S.spawn.cond_mtx);
 
   /* Spawn the new thread */
   memset(&tid, 0, sizeof(tid));
   /* JDR Sat 30 Nov 2019 10:39:04 AM EST
    * it appears that this fails at 300 threads.
    */
-  rtn = pthread_create (&tid, &attr, user_main, arg);
-  if(rtn) {
-     sys_eprintf("ERROR: pthread_create()");
-     abort();
-  }
+  ez_pthread_create (&tid, &attr, user_main, arg);
 
   /* Now we, the parent, wait on the child */
   while(!S.spawn.release_parent) {
-    if(pthread_cond_wait(&S.spawn.cond, &S.spawn.cond_mtx)) assert(0);
+    ez_pthread_cond_wait(&S.spawn.cond, &S.spawn.cond_mtx);
   }
 
   /* Release the condition mutex */
-  if(pthread_mutex_unlock(&S.spawn.cond_mtx)) assert (0);
+  ez_pthread_mutex_unlock(&S.spawn.cond_mtx);
 
   /* Release the global lock */
-  if(pthread_mutex_unlock(&S.spawn.mtx)) assert (0);
+  ez_pthread_mutex_unlock(&S.spawn.mtx);
 
   return tid;
 }
@@ -887,16 +884,16 @@ ES_release_parent(void)
  */
 {
   /* Condition manipulation must be protected by a mutex */
-  if (pthread_mutex_lock (&S.spawn.cond_mtx)) assert (0);
+  ez_pthread_mutex_lock (&S.spawn.cond_mtx);
 
   /* Note that parent may be released */
   S.spawn.release_parent= 1;
 
   /* Signal the parent */
-  if(pthread_cond_signal(&S.spawn.cond)) assert(0);
+  ez_pthread_cond_signal(&S.spawn.cond);
 
   /* Free up the condition mutex */
-  if (pthread_mutex_unlock (&S.spawn.cond_mtx)) assert (0);
+  ez_pthread_mutex_unlock (&S.spawn.cond_mtx);
 
 }
 
@@ -909,9 +906,8 @@ ES_cleanup(void)
    assert(TS.tid == pthread_self());
 
    /* Remove ourself from the vsig thread to TS map */
-   if(pthread_mutex_lock(&S.vsig.mtx)) assert (0);
+   ez_pthread_mutex_lock(&S.vsig.mtx);
    MAP_removeTypedItem(&S.vsig.thrd_ts_map, TS.tid);
-   if(pthread_mutex_unlock(&S.vsig.mtx)) assert (0);
 
    { /* Destroy key map */
       unsigned len= MAP_numItems(&TS.key_map);
@@ -943,6 +939,7 @@ ES_cleanup(void)
    for(unsigned i= 0; i < NUMSIGS; ++i) {
       PTRVEC_destructor(TS.sig_vec_arr+i);
    }
+   ez_pthread_mutex_unlock(&S.vsig.mtx);
 }
 
 int
@@ -960,9 +957,8 @@ ES_VSignal (pthread_t tid, int signum)
 {
    int rtn= EOF-1;
    /* find the correct TS by thread identifier */
-   if(pthread_mutex_lock(&S.vsig.mtx)) assert (0);
+   ez_pthread_mutex_lock(&S.vsig.mtx);
    struct _TS *ts= MAP_findTypedItem(&S.vsig.thrd_ts_map, tid);
-   if(pthread_mutex_unlock(&S.vsig.mtx)) assert (0);
 
    if(!ts) {
       eprintf("ERROR: tid= %s not found!", pthread_t_str(tid));
@@ -982,5 +978,6 @@ ES_VSignal (pthread_t tid, int signum)
 
    rtn= 0;
 abort:
+   ez_pthread_mutex_unlock(&S.vsig.mtx);
    return rtn;
 }

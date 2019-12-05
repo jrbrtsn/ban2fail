@@ -25,6 +25,7 @@
 
 #include "ez_es.h"
 #include "ez_libc.h"
+#include "ez_libpthread.h"
 #include "msgqueue.h"
 #include "pdns.h"
 #include "util.h"
@@ -261,7 +262,7 @@ join_f(void *data, int signo)
    struct worker *wrk= S.workerArr + signo;
    void *pRtn;
 
-   pthread_join(wrk->tid, &pRtn);
+   ez_pthread_join(wrk->tid, &pRtn);
 
    wrk->is_joined= 1;
 
@@ -416,11 +417,11 @@ worker_check_inbox_f(void *vp_ndx, int signo)
 
 #ifdef qqDEBUG
 if(!strcmp(msg.e->addr, "113.183.137.246")) {
-   pthread_mutex_lock(&S.prt_mtx);
+   ez_pthread_mutex_lock(&S.prt_mtx);
    ez_fprintf(stderr, "rc= %d, %s ----------------------------------\n", rc, msg.e->addr);
    addrinfo_print(res, stderr);
    fflush(stderr);
-   pthread_mutex_unlock(&S.prt_mtx);
+   ez_pthread_mutex_unlock(&S.prt_mtx);
 }
 #endif
          if(res) freeaddrinfo(res);
@@ -460,11 +461,11 @@ if(!strcmp(msg.e->addr, "113.183.137.246")) {
 
 #ifdef qqDEBUG
 if(!strcmp(msg.e->addr, "113.183.137.246")) {
-   pthread_mutex_lock(&S.prt_mtx);
+   ez_pthread_mutex_lock(&S.prt_mtx);
    ez_fprintf(stderr, "rc= %d, %s (%s) ----------------------------------\n", rc, msg.e->addr, msg.e->dns.name);
    addrinfo_print(res, stderr);
    fflush(stderr);
-   pthread_mutex_unlock(&S.prt_mtx);
+   ez_pthread_mutex_unlock(&S.prt_mtx);
 }
 #endif
          switch(rc) {
