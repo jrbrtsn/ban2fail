@@ -73,7 +73,7 @@ typedef struct {
       CFGMAP_NTUPLES_KNOWN_FLG = 1 << 0
    } flags;
    unsigned recurs_lvl;
-   MAP entry_tbl;	  /* Table of all entries in map */
+   MAP entry_map;	  /* Table of all entries in map */
    PTRVEC curlyBlock_lst; /* Stack of curly brace block symbols */
    unsigned serial_no_seq,/* For assigning serial number to values */
             nTuples;

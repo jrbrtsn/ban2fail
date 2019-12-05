@@ -75,7 +75,7 @@ CFGMAP_find(CFGMAP * self, const char *symbol)
  */
 {
    CFGMAP_ENTRY *rtn =
-       MAP_findItem(&self->entry_tbl, symbol, strlen(symbol));
+       MAP_findItem(&self->entry_map, symbol, strlen(symbol));
    if (rtn)
       ++rtn->nLookups;
    return rtn;
@@ -129,11 +129,11 @@ CFGMAP_append(CFGMAP * self, const char *symbol, unsigned int symLen,
    VALUE *v;
 
    /* Create a new CFGMAP_ENTRY if no match is found. */
-   if (!(pEntry = MAP_findItem(&self->entry_tbl, symbol, symLen))) {
+   if (!(pEntry = MAP_findItem(&self->entry_map, symbol, symLen))) {
       if (!CFGMAP_ENTRY_create(pEntry, symbol, symLen))
 	 return 1;
       if (MAP_addKey
-	  (&self->entry_tbl, pEntry->symbol, pEntry->symLen, pEntry))
+	  (&self->entry_map, pEntry->symbol, pEntry->symLen, pEntry))
 	 assert(0);
    }
 
@@ -180,7 +180,7 @@ CFGMAP_constructor(CFGMAP * self)
    memset(self, 0, sizeof(*self));
 
    /* Initialize data structures */
-   if (!MAP_constructor(&self->entry_tbl, 30, 100) ||
+   if (!MAP_constructor(&self->entry_map, 30, 100) ||
        !PTRVEC_constructor(&self->curlyBlock_lst, 10))
       return NULL;
 
@@ -195,9 +195,9 @@ CFGMAP_destructor(CFGMAP * self)
 {
 
    /* Remove configuration map entries */
-   MAP_clearAndDestroy(&self->entry_tbl,
+   MAP_clearAndDestroy(&self->entry_map,
 			   (void *(*)(void *))CFGMAP_ENTRY_destructor);
-   MAP_destructor(&self->entry_tbl);
+   MAP_destructor(&self->entry_map);
 
    {				/* Remove curly brace block symbols list */
       char *str;
@@ -358,7 +358,6 @@ _CFGMAP_fh_read(CFGMAP * self, FILE * fh, const char *fname)
 		  char *cmd;
 		  FILE *pofh = NULL;
 
-//		  while (*cmd && isspace(*cmd)) ++cmd;
 		  cmd = skipspace(str + 6);
                   
 
@@ -407,7 +406,6 @@ _CFGMAP_fh_read(CFGMAP * self, FILE * fh, const char *fname)
 		  /* If we have a value, find the beginning */
 		  if (*valStr) {
 		     /* Skip whitespace */
-//		     while (*valStr && isspace(*valStr)) ++valStr;
                      valStr= skipspace(valStr);
 
 		     if (*valStr == '[') {
@@ -422,7 +420,6 @@ _CFGMAP_fh_read(CFGMAP * self, FILE * fh, const char *fname)
 			stateFlags |= NDX_STATE;
 
 			/* Skip whitespace */
-//			while (*valStr && isspace(*valStr)) ++valStr;
                         valStr= skipspace(valStr);
 		     }
 
@@ -430,7 +427,6 @@ _CFGMAP_fh_read(CFGMAP * self, FILE * fh, const char *fname)
 			++valStr;
 
 		     /* Skip remaining whitespace */
-//		     while (*valStr && isspace(*valStr)) ++valStr;
                      valStr= skipspace(valStr);
 		  }
 
@@ -477,7 +473,7 @@ _CFGMAP_fh_read(CFGMAP * self, FILE * fh, const char *fname)
 		     unsigned nVals;
 		     /* We have to skip over the default leading '\' in symBuf, because it was supplied in the config file. */
 		     CFGMAP_ENTRY *pEntry =
-			 MAP_findItem(&self->entry_tbl, symBuf + 1,
+			 MAP_findItem(&self->entry_map, symBuf + 1,
 					  symLen - 1);
 
 		     if (!pEntry) {
@@ -725,31 +721,6 @@ CFGMAP_query_last_flags(
 
    *pRtn= rtnBuf;
 
-
-#if 0
-   /* Go through the OR'd flags, one at a time */
-   for (str = valStr; (flagLen = strcspn(str, " \t|"));
-	str += flagLen, str += strspn(str, " \t|")) {
-      char flagBuf[flagLen + 1];
-      const struct bitTuple *es;
-
-      memcpy(flagBuf, str, flagLen);
-      flagBuf[flagLen] = '\0';
-
-      for (es = es_arr; es->name; ++es) {
-	 if (strcmp(es->name, flagBuf))
-	    continue;
-	 *pRtn |= es->bit;
-	 break;
-      }
-
-      if (!es->name) {
-	 eprintf("ERROR: \"%s\" is not a valid flag.", symbol, valStr);
-	 return 1;
-      }
-   }
-#endif
-
    return 0;
 }
 
@@ -784,20 +755,6 @@ CFGMAP_query_last_enum(
       return 0;
    }
 
-#if 0
-
-   /* Look for an enum value match */
-   for (i = 0; es_arr[i].name; ++i) {
-
-      /* If no match, continue */
-      if (strcmp(valStr, es_arr[i].name))
-	 continue;
-
-      /* Assign value, return */
-      *pRtn = es_arr[i].enumVal;
-      return 0;
-   }
-#endif
    return 0;
 }
 
@@ -972,11 +929,11 @@ CFGMAP_print(CFGMAP * self, FILE * fh)
  * Print to stream for debugging purposes
  */
 {
-   size_t i, count = MAP_numItems(&self->entry_tbl);
+   size_t i, count = MAP_numItems(&self->entry_map);
    CFGMAP_ENTRY *entryPtr_arr[count];
 
    /* Load entry pointers into an array */
-   MAP_fetchAllItems(&self->entry_tbl, (void **)entryPtr_arr);
+   MAP_fetchAllItems(&self->entry_map, (void **)entryPtr_arr);
 
    /* Sort the pointer array */
    qsort(entryPtr_arr, count, sizeof(CFGMAP_ENTRY *), cmp_symbol);
@@ -1010,7 +967,7 @@ CFGMAP_numUnused_symbols(CFGMAP * self)
  * Print unused symbol count.
  */
 {
-   size_t count = MAP_numItems(&self->entry_tbl);
+   size_t count = MAP_numItems(&self->entry_map);
    CFGMAP_ENTRY *entryPtr_arr[count + 1], **ppEntry;
 
    /* Zero out the array so we can find the end */
@@ -1018,7 +975,7 @@ CFGMAP_numUnused_symbols(CFGMAP * self)
 
    /* Load entry pointers into an array */
    ppEntry = entryPtr_arr;
-   MAP_visitAllEntries(&self->entry_tbl, unused_load_arr, &ppEntry);
+   MAP_visitAllEntries(&self->entry_map, unused_load_arr, &ppEntry);
 
    /* Find out how many entrys are unreferenced */
    for (count = 0; entryPtr_arr[count]; ++count) ;
@@ -1032,7 +989,7 @@ CFGMAP_print_unused_symbols(CFGMAP * self, FILE * fh)
  * Print unused symbols for troubleshooting
  */
 {
-   size_t count = MAP_numItems(&self->entry_tbl);
+   size_t count = MAP_numItems(&self->entry_map);
    CFGMAP_ENTRY *entryPtr_arr[count + 1], **ppEntry;
 
    /* Zero out the array so we can find the end */
@@ -1040,7 +997,7 @@ CFGMAP_print_unused_symbols(CFGMAP * self, FILE * fh)
 
    /* Load entry pointers into an array */
    ppEntry = entryPtr_arr;
-   MAP_visitAllEntries(&self->entry_tbl, unused_load_arr, &ppEntry);
+   MAP_visitAllEntries(&self->entry_map, unused_load_arr, &ppEntry);
 
    /* Find out how many entrys are unreferenced */
    for (count = 0; entryPtr_arr[count]; ++count) ;
@@ -1060,7 +1017,7 @@ CFGMAP_numEntries(CFGMAP * self)
  * Return the number of entries stored in the configuration map.
  */
 {
-   return MAP_numItems(&self->entry_tbl);
+   return MAP_numItems(&self->entry_map);
 }
 
 static int count_tuples(void *item_ptr, void *data)
@@ -1084,7 +1041,7 @@ CFGMAP_numTuples(CFGMAP * self)
 {
    /* Optimization to avoid recounting tuples */
    if (!(self->flags & CFGMAP_NTUPLES_KNOWN_FLG)) {
-      MAP_visitAllEntries(&self->entry_tbl, count_tuples, &self->nTuples);
+      MAP_visitAllEntries(&self->entry_map, count_tuples, &self->nTuples);
       self->flags |= CFGMAP_NTUPLES_KNOWN_FLG;
    }
 
@@ -1269,7 +1226,6 @@ str_extract_string(char **rtnVal, const char **pStr)
    int rtn = 1, len;
 
    /* Skip leading whitespace */
-//   for (; **pStr && isspace(**pStr); (*pStr)++) ;
    *pStr= skipspace(*(char**)pStr);
 
    if (**pStr == '"') {		/* Quoted string */
