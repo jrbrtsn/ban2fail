@@ -371,7 +371,7 @@ eprintf("thread %u exiting at %f seconds", ndx, (double)ms/1000.);
    /* Free resources for this thread */
    // JDR Wed 04 Dec 2019 11:52:15 AM EST
    // This causes a double free() error, so let it leak for now.
-//   ES_cleanup();
+   ES_cleanup();
 
    return NULL;
 }

@@ -7,9 +7,9 @@
 #include <assert.h>
 
 #include "util.h"
-#include "map.h"
 #include "msgqueue.h"
 #include "ez_es.h"
+#include "map.h"
 #include "ez_libpthread.h"
 
 /* Types of registered callbacks */
@@ -95,7 +95,7 @@ static _Thread_local struct _TS {
    struct {
       /* virtual signal message queue */
       MSGQUEUE mq;
-      MAP map;
+      MAP cb_map;
    } vsig;
 
 } TS;
@@ -294,22 +294,34 @@ sigusr2_h(void *ctxt, int unused)
  * Handle any vsignals.
  */
 {
-   int vsigno;
+   int rtn= 0,
+       vsigno;
+
    Cb *cb_arr[VSIG_QUEUE_MAX];
+
+   /* Protected operation */
+//   ez_pthread_mutex_lock(&S.vsig.mtx);
 
    while(EOF != MSGQUEUE_extractMsg(&TS.vsig.mq, &vsigno)) {
 
-      int rc= MAP_findItems(&TS.vsig.map, (void**)cb_arr, VSIG_QUEUE_MAX, &vsigno, sizeof(int));
-      assert(-1 != rc);
-      if(!rc) continue;
+      int rc= MAP_findItems(&TS.vsig.cb_map, (void**)cb_arr, VSIG_QUEUE_MAX, &vsigno, sizeof(int));
+      if(-1 == rc) {
+         eprintf("FATAL: MAP_findItems() failed");
+         abort();
+      }
+
+      if(!rc) goto abort;
 
       for(int i= 0; i < rc; ++i) {
          Cb *cb= cb_arr[i];
-         int error= (* cb->un.sig.callback_f)(cb->ctxt, vsigno);
-         if(error) return error;
+         rtn= (* cb->un.sig.callback_f)(cb->ctxt, vsigno);
+         if(rtn) goto abort;
       }
    }
-   return 0;
+
+abort:
+//   ez_pthread_mutex_unlock(&S.vsig.mtx);
+   return rtn;
 }
 
 static void
@@ -350,7 +362,7 @@ initialize()
 
    /*--- virtual signal infrastructure ---*/
    MSGQUEUE_constructor(&TS.vsig.mq, sizeof(int), VSIG_QUEUE_MAX);
-   MAP_constructor(&TS.vsig.map, 10, 10);
+   MAP_constructor(&TS.vsig.cb_map, 10, 10);
    /* Register a signal handler for SIGUSR2 so we can have virtual signals. */
    ez_ES_registerSignal(SIGUSR2, sigusr2_h, NULL);
    ez_pthread_mutex_unlock(&S.vsig.mtx);
@@ -446,7 +458,7 @@ ES_registerVSignal (
    if(!Cb_VSignalCreate(cb, signum, callback_f, ctxt)) assert(0);
 
    /* Place in the virtual signal map indexed on signum */
-   MAP_addTypedKey(&TS.vsig.map, cb->un.sig.signum, cb);
+   MAP_addTypedKey(&TS.vsig.cb_map, cb->un.sig.signum, cb);
 
    /* All callbacks are put in the key table */
    MAP_addTypedKey(&TS.key_map, cb->key, cb);
@@ -512,7 +524,6 @@ ES_unregister (int key)
 {
    if(TS.tid != pthread_self()) initialize();
 
-//   unsigned i;
    Cb *cb = MAP_findTypedItem(&TS.key_map, key);
    if(!cb) return -1;
 
@@ -545,7 +556,7 @@ ES_unregister (int key)
          } break;
 
       case ES_VSIG_TYPE:
-         if(!MAP_removeSpecificTypedItem(&TS.vsig.map, cb->un.sig.signum, cb)) assert(0);
+         if(!MAP_removeSpecificTypedItem(&TS.vsig.cb_map, cb->un.sig.signum, cb)) assert(0);
          break;
 
       case ES_TIMER_TYPE:
@@ -908,30 +919,18 @@ ES_cleanup(void)
    /* Remove ourself from the vsig thread to TS map */
    ez_pthread_mutex_lock(&S.vsig.mtx);
    MAP_removeTypedItem(&S.vsig.thrd_ts_map, TS.tid);
+   ez_pthread_mutex_unlock(&S.vsig.mtx);
 
-   { /* Destroy key map */
-      unsigned len= MAP_numItems(&TS.key_map);
-      Cb *cbArr[len];
-      MAP_fetchAllItems(&TS.key_map, (void**)cbArr);
-      for(unsigned i= 0; i < len; ++i) {
-         Cb_destroy(cbArr[i]);
-      }
+   /* Destroy all callbacks, which are indexed in key map,
+    * and the key map itself.
+    */
+   MAP_clearAndDestroy(&TS.key_map, (void*(*)(void*))Cb_destructor);
 
-      MAP_destructor(&TS.key_map);
-   }
+   /* Destroy vsignal infrastructure */
+   MAP_destructor(&TS.vsig.cb_map);
 
-   { /* Destroy vsignal infrastructure */
-      unsigned len= MAP_numItems(&TS.vsig.map);
-      Cb *cbArr[len];
-      MAP_fetchAllItems(&TS.vsig.map, (void**)cbArr);
-      for(unsigned i= 0; i < len; ++i) {
-         Cb_destroy(cbArr[i]);
-      }
-      MAP_destructor(&TS.vsig.map);
-
-      /* Tear down the message queue */
-      MSGQUEUE_destructor(&TS.vsig.mq);
-   }
+   /* Tear down the message queue */
+   MSGQUEUE_destructor(&TS.vsig.mq);
 
    PTRVEC_destructor(&TS.fd_vec);
    PTRVEC_destructor(&TS.timer_vec);
@@ -939,7 +938,6 @@ ES_cleanup(void)
    for(unsigned i= 0; i < NUMSIGS; ++i) {
       PTRVEC_destructor(TS.sig_vec_arr+i);
    }
-   ez_pthread_mutex_unlock(&S.vsig.mtx);
 }
 
 int

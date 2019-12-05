@@ -191,13 +191,19 @@ forward match) info *-a-*. In the list, DNS issues are presented like so:
 # DNS is good
 0 Dec 04 11:04  185.31.204.22       1/0    offenses GB [BLK] mail.damianbasel.audise.com 
 
-# Reverse lookup does not match forward lookup
+# Reverse lookup failed with DNS server
+0 Dec 05 14:14  120.230.127.69      1/0    offenses CN [BLK]  SERVFAIL
+
+# Reverse lookup is a non-existent domain
+0 Dec 05 13:14  103.95.9.208        1/0    offenses ID [BLK]  NXDOMAIN
+
+# Forward lookup does not match reverse lookup
 0 Dec 04 08:47  103.238.80.23       2/0    offenses VN [BLK] example.com !
 
-# Forward DNS is unavailable
+# Forward DNS record does not exist
 4 Dec 04 10:54  106.51.230.190      2/0    offenses IN [BLK] broadband.actcorp.in !!
 
-# DNS is inconclusive due to lack of response from DNS servers
+# DNS is inconclusive due to lack of response from a DNS server
 0 Dec 04 04:13  87.120.246.53       1/0    offenses BG [BLK] client.playtime.bg ~
 ```
 
