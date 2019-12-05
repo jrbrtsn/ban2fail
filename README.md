@@ -35,24 +35,24 @@ default that IP will be blocked.
 ```
 LOGTYPE auth {
 
-# Where to find the log files
+   # Where to find the log files
    DIR= /var/log
    PREFIX= auth.log
 
-# How to read the timestamp
+   # How to read the timestamp
    TIMESTAMP auth_ts {
-# isolates the timestamp from a line matched by a TARGET
+      # isolates the timestamp from a line matched by a TARGET
       REGEX= ^(.*) srv
-# Passed to strptime() to intrepret the timestamp string
+      # Passed to strptime() to intrepret the timestamp string
       STRPTIME= %b %d %T
-# These stamps do not include the year, so it is implied.
+      # These stamps do not include the year, so it is implied.
       FLAGS= GUESS_YEAR
    }
 
    TARGET imap {
-# Pattern to search for, isolates the IP address
+      # Pattern to search for, isolates the IP address
       REGEX= imapd.*Login failed.*\[([0-9.a-f:]+)\]$
-# Assign this as the severity of the offense.
+      # Assign this as the severity of the offense.
       SEVERITY= 3
    }
 
@@ -69,9 +69,8 @@ LOGTYPE auth {
 
    TARGET dovecot {
       SEVERITY= 3
-      REGEX= dovecot.*authentication failure.*rhost=([0-9.]+)
+      REGEX= dovecot.*authentication failure.*rhost=([0-9.a-f:]+)
    }
-
 }
 ```
 
