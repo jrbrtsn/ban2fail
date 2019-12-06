@@ -20,5 +20,7 @@ mail-mail\.facebook\.com
 yahoo\.com
 _EOF_
 
+<$TMPFILE sed '0,/===============================================/ d'
+
 
 exit 0
