@@ -24,9 +24,11 @@
 
 /***************************************************/
 int _ez_db_create(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB **dbp,
       DB_ENV *dbenv,
       u_int32_t flags
@@ -48,9 +50,11 @@ int _ez_db_create(
 
 /***************************************************/
 int _ez_db_open(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB *db,
       DB_TXN *txnid,
       const char *file,
@@ -76,9 +80,11 @@ int _ez_db_open(
 
 /***************************************************/
 int _ez_db_put(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB *db,
       DB_TXN *txnid,
       DBT *key,
@@ -102,9 +108,11 @@ int _ez_db_put(
 
 /***************************************************/
 int _ez_db_get(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB *db,
       DB_TXN *txnid,
       DBT *key,
@@ -132,9 +140,11 @@ int _ez_db_get(
 
 /***************************************************/
 int _ez_db_del(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB *db,
       DB_TXN *txnid,
       DBT *key,
@@ -157,9 +167,11 @@ int _ez_db_del(
 
 /***************************************************/
 int _ez_db_close(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB *db,
       u_int32_t flags
       )
@@ -180,9 +192,11 @@ int _ez_db_close(
 
 /***************************************************/
 int _ez_db_fd(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB *db,
       int *fdp
       )

@@ -92,7 +92,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 13,
-      .patch= 9
+      .patch= 10
    },
 
    .bitTuples.flags= GlobalFlagBitTuples

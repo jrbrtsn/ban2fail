@@ -24,9 +24,11 @@
 
 /***************************************************/
 gzFile _ez_gzopen(
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const char *path,
       const char *mode
       )
@@ -44,9 +46,11 @@ gzFile _ez_gzopen(
 
 /***************************************************/
 int _ez_gzclose(
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       gzFile file
       )
 {
@@ -88,9 +92,11 @@ int _ez_gzclose(
 
 /***************************************************/
 int _ez_gzwrite(
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       gzFile file,
       voidpc buf,
       unsigned len
@@ -119,9 +125,11 @@ int _ez_gzwrite(
 
 /***************************************************/
 int _ez_gzread(
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       gzFile file,
       voidp buf,
       unsigned len
@@ -150,9 +158,11 @@ int _ez_gzread(
 
 /***************************************************/
 int _ez_gzflush(
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       gzFile file,
       int flush 
       )
@@ -179,9 +189,11 @@ int _ez_gzflush(
 
 /***************************************************/
 z_off_t _ez_gzseek(
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       gzFile file,
       z_off_t offset,
       int whence
@@ -210,9 +222,11 @@ z_off_t _ez_gzseek(
 
 /***************************************************/
 char* _ez_gzgets (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       gzFile file,
       char *buf,
       int len
@@ -246,9 +260,11 @@ char* _ez_gzgets (
 
 /***************************************************/
 z_off_t _ez_gztell(
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       gzFile file
       )
 {

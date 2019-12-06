@@ -26,9 +26,11 @@
 
 /***************************************************/
 int _ez_fputs (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const char *s,
       FILE *stream
       )
@@ -47,9 +49,11 @@ int _ez_fputs (
 
 /***************************************************/
 int _ez_fputc (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       int c,
       FILE *stream
       )
@@ -68,9 +72,11 @@ int _ez_fputc (
 
 /***************************************************/
 int _ez_fprintf (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       FILE *stream,
       const char *fmt,
       ...
@@ -97,9 +103,11 @@ int _ez_fprintf (
 
 /***************************************************/
 FILE* _ez_popen (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const char *command,
       const char *type
       )
@@ -119,9 +127,11 @@ FILE* _ez_popen (
 
 /***************************************************/
 FILE* _ez_fopen (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const char *pathname,
       const char *mode
       )
@@ -140,9 +150,11 @@ FILE* _ez_fopen (
 
 /***************************************************/
 int _ez_fclose (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       FILE *stream
       )
 {
@@ -160,9 +172,11 @@ int _ez_fclose (
 
 /***************************************************/
 int _ez_fflush (
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       FILE *stream
       )
 {
@@ -180,9 +194,11 @@ int _ez_fflush (
 
 /***************************************************/
 size_t _ez_fread (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       void *ptr,
       size_t size,
       size_t nmemb,
@@ -203,9 +219,11 @@ size_t _ez_fread (
 
 /***************************************************/
 size_t _ez_fwrite (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const void *ptr,
       size_t size,
       size_t nmemb,
@@ -226,9 +244,11 @@ size_t _ez_fwrite (
 
 /***************************************************/
 int _ez_pclose (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       FILE *stream
       )
 {
@@ -246,9 +266,11 @@ int _ez_pclose (
 
 /***************************************************/
 char* _ez_fgets (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       char *s,
       int size,
       FILE *stream
@@ -268,9 +290,11 @@ char* _ez_fgets (
 
 /***************************************************/
 int _ez_remove (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const char *pathname
       )
 {
@@ -288,9 +312,11 @@ int _ez_remove (
 
 /***************************************************/
 int _ez_rename (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const char *oldpath,
       const char *newpath
       )
@@ -309,9 +335,11 @@ int _ez_rename (
 
 /***************************************************/
 DIR* _ez_opendir (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const char *name
       )
 {
@@ -329,9 +357,11 @@ DIR* _ez_opendir (
 
 /***************************************************/
 int _ez_closedir (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       DIR *dirp
       )
 {
@@ -349,9 +379,11 @@ int _ez_closedir (
 
 /***************************************************/
 struct dirent* _ez_readdir (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       DIR *dirp
       )
 {
@@ -374,9 +406,11 @@ struct dirent* _ez_readdir (
 
 /***************************************************/
 int _ez_close (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       int fd
       )
 {
@@ -394,9 +428,11 @@ int _ez_close (
 
 /***************************************************/
 ssize_t _ez_write (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       int fd,
       const void *buf,
       size_t count
@@ -416,9 +452,11 @@ ssize_t _ez_write (
 
 /***************************************************/
 int _ez_stat (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const char *pathname,
       struct stat *statbuf
       )
@@ -437,9 +475,11 @@ int _ez_stat (
 
 /***************************************************/
 int _ez_mkdir (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const char *pathname,
       mode_t mode
       )
@@ -458,9 +498,11 @@ int _ez_mkdir (
 
 /***************************************************/
 int _ez_rmdir (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const char *pathname
       )
 {
@@ -478,9 +520,11 @@ int _ez_rmdir (
 
 /***************************************************/
 int _ez_unlink (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const char *pathname
       )
 {
@@ -498,9 +542,11 @@ int _ez_unlink (
 
 /***************************************************/
 int _ez_getaddrinfo(
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       const char *node,
       const char *service,
       const struct addrinfo *hints,
@@ -538,9 +584,11 @@ int _ez_getaddrinfo(
 
 /***************************************************/
 int _ez_getnameinfo(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       const struct sockaddr *addr,
       socklen_t addrlen,
       char *host,
@@ -580,9 +628,11 @@ int _ez_getnameinfo(
 
 /***************************************************/
 int _ez_flock (
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       int fd,
       int operation
       )
@@ -609,9 +659,11 @@ int _ez_flock (
 
 /***************************************************/
 int _ez_open(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       const char *pathname,
       int flags,
       mode_t mode
@@ -639,9 +691,11 @@ int _ez_open(
 
 /***************************************************/
 int _ez_access(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       const char *pathname,
       int mode
       )
@@ -667,9 +721,11 @@ int _ez_access(
 
 /***************************************************/
 char *_ez_strptime(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       const char *s,
       const char *format,
       struct tm *tm
@@ -689,9 +745,11 @@ char *_ez_strptime(
 
 /***************************************************/
 int _ez_seteuid(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       uid_t euid
       )
 {
@@ -708,9 +766,11 @@ int _ez_seteuid(
 
 /***************************************************/
 int _ez_setegid(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       gid_t egid
       )
 {
@@ -727,9 +787,11 @@ int _ez_setegid(
 
 /***************************************************/
 struct group* _ez_getgrnam(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       const char *name
       )
 {
@@ -760,9 +822,11 @@ struct group* _ez_getgrnam(
 
 /***************************************************/
 int _ez_chown(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       const char *pathname,
       uid_t owner,
       gid_t group
@@ -781,9 +845,11 @@ int _ez_chown(
 
 /***************************************************/
 int _ez_fchown(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       int fd,
       uid_t owner,
       gid_t group
@@ -802,9 +868,11 @@ int _ez_fchown(
 
 /***************************************************/
 int _ez_fchmod(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       int fd,
       mode_t mode
       )
@@ -822,9 +890,11 @@ int _ez_fchmod(
 
 /***************************************************/
 int _ez_setuid(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       uid_t uid
       )
 {
@@ -841,9 +911,11 @@ int _ez_setuid(
 
 /***************************************************/
 int _ez_setgid(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       gid_t gid
       )
 {

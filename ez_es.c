@@ -5,9 +5,11 @@
 
 /***************************************************/
 int _ez_ES_registerFd (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       int fd,
       short events,
       int (*callback_f)(void *ctxt, int fd, short events),
@@ -29,9 +31,11 @@ int _ez_ES_registerFd (
 /***************************************************/
 
 int _ez_ES_registerSignal (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       int signum,
       int (*callback_f)(void *ctxt, int signo),
       void *ctxt
@@ -52,9 +56,11 @@ int _ez_ES_registerSignal (
 /***************************************************/
 
 int _ez_ES_registerVSignal (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       int signum,
       int (*callback_f)(void *ctxt, int signo),
       void *ctxt
@@ -74,9 +80,11 @@ int _ez_ES_registerVSignal (
 
 /***************************************************/
 int _ez_ES_VSignal (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       pthread_t tid,
       int signum
       )
@@ -95,9 +103,11 @@ int _ez_ES_VSignal (
 
 /***************************************************/
 int _ez_ES_registerTimer (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       int64_t pause_ms,
       int64_t interval_ms,
       int (*callback_f)(void *ctxt),
@@ -118,9 +128,11 @@ int _ez_ES_registerTimer (
 
 /***************************************************/
 int _ez_ES_unregister (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName,
+#endif
       int key
       )
 {
@@ -138,9 +150,11 @@ int _ez_ES_unregister (
 
 /***************************************************/
 int _ez_ES_run (
+#ifdef DEBUG
       const char *fileName,
       int lineNo,
       const char *funcName
+#endif
       )
 {
    int rtn= ES_run();

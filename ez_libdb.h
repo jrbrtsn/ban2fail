@@ -27,23 +27,37 @@
 extern "C" {
 #endif
 
-#define ez_db_create(dbp, dbenv, flags) \
+#ifdef DEBUG
+#       define ez_db_create(dbp, dbenv, flags) \
          _ez_db_create(__FILE__, __LINE__, __FUNCTION__, dbp, dbenv, flags)
+#else
+#       define ez_db_create(dbp, dbenv, flags) \
+         _ez_db_create(dbp, dbenv, flags)
+#endif
 int _ez_db_create(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB **dbp,
       DB_ENV *dbenv,
       u_int32_t flags
      );
 
-#define ez_db_open(db, txnid, file, database, type, flags, mode ) \
+#ifdef DEBUG
+#       define ez_db_open(db, txnid, file, database, type, flags, mode ) \
          _ez_db_open(__FILE__, __LINE__, __FUNCTION__, db, txnid, file, database, type, flags, mode)
+#else
+#       define ez_db_open(db, txnid, file, database, type, flags, mode ) \
+         _ez_db_open(db, txnid, file, database, type, flags, mode)
+#endif
 int _ez_db_open(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB *db,
       DB_TXN *txnid,
       const char *file,
@@ -53,12 +67,19 @@ int _ez_db_open(
       int mode
       );
 
-#define ez_db_put(db, txnid, key, data, flags) \
+#ifdef DEBUG
+#       define ez_db_put(db, txnid, key, data, flags) \
          _ez_db_put(__FILE__, __LINE__, __FUNCTION__, db, txnid, key, data, flags)
+#else
+#       define ez_db_put(db, txnid, key, data, flags) \
+         _ez_db_put(db, txnid, key, data, flags)
+#endif
 int _ez_db_put(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB *db,
       DB_TXN *txnid,
       DBT *key,
@@ -66,12 +87,19 @@ int _ez_db_put(
       u_int32_t flags
       );
 
-#define ez_db_get(db, txnid, key, data, flags) \
+#ifdef DEBUG
+#       define ez_db_get(db, txnid, key, data, flags) \
          _ez_db_get(__FILE__, __LINE__, __FUNCTION__, db, txnid, key, data, flags)
+#else
+#       define ez_db_get(db, txnid, key, data, flags) \
+         _ez_db_get(db, txnid, key, data, flags)
+#endif
 int _ez_db_get(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB *db,
       DB_TXN *txnid,
       DBT *key,
@@ -79,34 +107,55 @@ int _ez_db_get(
       u_int32_t flags
       );
 
-#define ez_db_del(db, txnid, key, flags) \
+#ifdef DEBUG
+#       define ez_db_del(db, txnid, key, flags) \
          _ez_db_del(__FILE__, __LINE__, __FUNCTION__, db, txnid, key, flags)
+#else
+#       define ez_db_del(db, txnid, key, flags) \
+         _ez_db_del(db, txnid, key, flags)
+#endif
 int _ez_db_del(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB *db,
       DB_TXN *txnid,
       DBT *key,
       u_int32_t flags
       );
 
-#define ez_db_close(db, flags) \
+#ifdef DEBUG
+#       define ez_db_close(db, flags) \
          _ez_db_close(__FILE__, __LINE__, __FUNCTION__, db, flags)
+#else
+#       define ez_db_close(db, flags) \
+         _ez_db_close(db, flags)
+#endif
 int _ez_db_close(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB *db,
       u_int32_t flags
       );
 
-#define ez_db_fd(db, fdp) \
+#ifdef DEBUG
+#       define ez_db_fd(db, fdp) \
          _ez_db_fd(__FILE__, __LINE__, __FUNCTION__, db, fdp)
+#else
+#       define ez_db_fd(db, fdp) \
+         _ez_db_fd(db, fdp)
+#endif
 int _ez_db_fd(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       DB *db,
       int *fdp
       );

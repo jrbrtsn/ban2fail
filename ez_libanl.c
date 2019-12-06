@@ -24,9 +24,11 @@
 
 /***************************************************/
 int _ez_getaddrinfo_a(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       int mode,
       struct gaicb *list[],
       int nitems,
@@ -53,9 +55,11 @@ int _ez_getaddrinfo_a(
 
 /***************************************************/
 int _ez_gai_suspend(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       const struct gaicb * const list[],
       int nitems,
       const struct timespec *timeout

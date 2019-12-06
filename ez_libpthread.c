@@ -26,9 +26,11 @@
 
 /***************************************************/
 int _ez_pthread_mutex_lock(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       pthread_mutex_t *mutex
       )
 {
@@ -46,9 +48,11 @@ int _ez_pthread_mutex_lock(
 
 /***************************************************/
 int _ez_pthread_mutex_unlock(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       pthread_mutex_t *mutex
       )
 {
@@ -66,9 +70,11 @@ int _ez_pthread_mutex_unlock(
 
 /***************************************************/
 int _ez_pthread_create(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       pthread_t *thread,
       const pthread_attr_t *attr,
       void *(*start_routine) (void *),
@@ -89,9 +95,11 @@ int _ez_pthread_create(
 
 /***************************************************/
 int _ez_pthread_cond_signal(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       pthread_cond_t *cond
       )
 {
@@ -109,9 +117,11 @@ int _ez_pthread_cond_signal(
 
 /***************************************************/
 int _ez_pthread_cond_wait(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       pthread_cond_t *cond,
       pthread_mutex_t *mutex
       )
@@ -130,9 +140,11 @@ int _ez_pthread_cond_wait(
 
 /***************************************************/
 int _ez_pthread_join(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       pthread_t thread,
       void **retval
       )

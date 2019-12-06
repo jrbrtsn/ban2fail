@@ -27,24 +27,38 @@
 extern "C" {
 #endif
 
-#define ez_getaddrinfo_a(mode, list, nItems, sevp) \
+#ifdef DEBUG
+#       define ez_getaddrinfo_a(mode, list, nItems, sevp) \
          _ez_getaddrinfo_a(__FILE__, __LINE__, __FUNCTION__, mode, list, nItems, sevp)
+#else
+#       define ez_getaddrinfo_a(mode, list, nItems, sevp) \
+         _ez_getaddrinfo_a(mode, list, nItems, sevp)
+#endif
 int _ez_getaddrinfo_a(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       int mode,
       struct gaicb *list[],
       int nitems,
       struct sigevent *sevp
       );
 
-#define ez_gai_suspend(list, nItems, timeout) \
+#ifdef DEBUG
+#       define ez_gai_suspend(list, nItems, timeout) \
          _ez_gai_suspend(__FILE__, __LINE__, __FUNCTION__, list, nItems, timeout)
+#else
+#       define ez_gai_suspend(list, nItems, timeout) \
+         _ez_gai_suspend(list, nItems, timeout)
+#endif
 int _ez_gai_suspend(
+#ifdef DEBUG
    const char *fileName,
    int lineNo,
    const char *funcName,
+#endif
       const struct gaicb * const list[],
       int nitems,
       const struct timespec *timeout

@@ -233,6 +233,7 @@ OFFENTRY_list(OFFENTRY *self, FILE *fh, int flags, unsigned nAllowed)
    };
 
 
+#ifdef OLD
    const static char *dns_fmt= "%u %-13s %-15s\t%5u/%-4d offenses %s [%s] %s %s\n",
                      *fmt= "%u %-13s %-15s\t%5u/%-4d offenses %s [%s]\n";
 
@@ -247,6 +248,22 @@ OFFENTRY_list(OFFENTRY *self, FILE *fh, int flags, unsigned nAllowed)
          , self->dns.name ? self->dns.name : ""
          , bits2str(self->dns.flags, dns_flagsArr)
          );
+#else
+   const static char *dns_fmt= "%u %-13s %5u/%-4d offenses %s [%-3s] %s \t%s %s\n",
+                     *fmt= "%u %-13s %5u/%-4d offenses %s [%-3s] %s\n";
+
+   ez_fprintf(fh, self->dns.flags ? dns_fmt : fmt
+         , self->severity
+         , self->latest ? local_strftime(&self->latest, "%b %d %H:%M") : ""
+         , self->count
+         , nAllowed
+         , self->cntry[0] ? self->cntry : "--"
+         , bits2str(flags, BlockBitTuples)
+         , self->addr
+         , self->dns.name ? self->dns.name : ""
+         , bits2str(self->dns.flags, dns_flagsArr)
+         );
+#endif
 
    return 0;
 }
