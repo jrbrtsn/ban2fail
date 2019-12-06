@@ -212,6 +212,7 @@ If you want to see the offending log lines for specific address(es), supply
 them on the command line like so:
 
 ```
+john@srv:~$  ban2fail 68.183.105.52
 ====== Report for 68.183.105.52 ======
 ------- /var/log/auth.log -------------
 Dec  5 17:50:47 srv sshd[22326]: Invalid user cron from 68.183.105.52 port 41874
