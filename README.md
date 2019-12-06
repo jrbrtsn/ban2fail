@@ -15,9 +15,9 @@ server to have a chance of stopping them. Here are the timing results for a
 typical scan on my server:
 
 ```
-real    0m0.269s
-user    0m0.108s
-sys     0m0.134s
+real    0m0.325s
+user    0m0.186s
+sys     0m0.150s
 ```
 
 Currently I am running *ban2fail* from a *systemd* service file which triggers
@@ -79,8 +79,9 @@ Syntax in the config file is pretty much the same as the nftables syntax. All
 keywords must be in upper case.  Any values in the key=value pairs have
 whitespace stripped from the beginning and end of the line. Since there is
 little escaping of characters going on, regular expressions are mostly WYSIWYG.
-If you have a hash symbol '#' in your pattern (which is the comment character
-for the config file parser), you will need to escape it like so:
+If you have a hash symbol '#' or a double quote '"' in your pattern (which are
+special characters for the config file parser), you will need to escape
+them like so:
 
 ```
 # Nov 27 02:03:03 srv named[764]: client @0x7fe6a0053420 1.192.90.183#27388 (www.ipplus360.com): query (cache) 'www.ipplus360.com/A/IN' denied
@@ -189,35 +190,34 @@ forward match) info *-a-*. In the list, DNS issues are presented like so:
 
 ```
 # DNS is good
-0 Dec 04 11:04  185.31.204.22       1/0    offenses GB [BLK] mail.damianbasel.audise.com 
+0 Dec 06 08:31      1/0    offenses AR [BLK] 200.71.237.244     host244.200-71-237.telecom.net.ar
 
 # Reverse lookup failed with DNS server
-0 Dec 05 14:14  120.230.127.69      1/0    offenses CN [BLK]  SERVFAIL
+0 Dec 05 19:43      1/0    offenses GB [BLK] 185.217.230.146     SERVFAIL
 
 # Reverse lookup is a non-existent domain
-0 Dec 05 13:14  103.95.9.208        1/0    offenses ID [BLK]  NXDOMAIN
+2 Dec 05 21:11      1/0    offenses US [BLK] 67.205.153.94       NXDOMAIN
 
 # Forward lookup does not match reverse lookup
-0 Dec 04 08:47  103.238.80.23       2/0    offenses VN [BLK] example.com !
+0 Dec 06 08:40      1/0    offenses LU [BLK] 92.38.132.54       ibocke43.monster !
 
 # Forward DNS record does not exist
-4 Dec 04 10:54  106.51.230.190      2/0    offenses IN [BLK] broadband.actcorp.in !!
+0 Dec 06 08:37      1/0    offenses US [BLK] 63.81.90.135       63-81-90-135.nca.lanset.com !!
 
 # DNS is inconclusive due to lack of response from a DNS server
-0 Dec 04 04:13  87.120.246.53       1/0    offenses BG [BLK] client.playtime.bg ~
+0 Dec 05 22:04      1/0    offenses RU [BLK] 77.221.144.107     news5.burningcoalsa.com ~
 ```
 
 If you want to see the offending log lines for specific address(es), supply
 them on the command line like so:
 
 ```
-user@srv:~$ ban2fail 208.187.162.100
-====== Report for 208.187.162.100 ======
-------- /var/log/exim4/mainlog -------------
-2019-12-04 12:08:15 H=(mail.spika.stream) [208.187.162.100] F=<first.class.turmeric.cbd-mgregory=robertsonoptical.com@spika.stream> rejected RCPT <mgregory@robertsonoptical.com>: 208.187.162.100 is listed at zen.spamhaus.org (127.0.0.3: https://www.spamhaus.org/sbl/query/SBLCSS)
+====== Report for 68.183.105.52 ======
+------- /var/log/auth.log -------------
+Dec  5 17:50:47 srv sshd[22326]: Invalid user cron from 68.183.105.52 port 41874
+Dec  5 17:50:48 srv sshd[22326]: Failed password for invalid user cron from 68.183.105.52 port 41874 ssh2
 
 ```
-
 
 ### Testing
 
@@ -246,7 +246,7 @@ about any modern Linux distro. It uses the following libraries:
 
 + *libz* to read compressed log files
 
-+ *libpthread* for parallel DNS lookups (200 simulataneous)
++ *libpthread* for parallel DNS lookups (200 simultaneous)
 
 + *libdb* caching of offense location and size in log files
 
@@ -257,13 +257,16 @@ make release
 make install
 ```
 
-The executable will be placed in "/usr/local/bin".
+The make *install* target calls *install.sh*, which does a bunch of stuff
+including setting up and enabling a systemd service, so you might want have a
+look before pulling the trigger.
 
-In order to run *ban2fail* as a systemd service which actively monitors log
-files, put the service file *ban2fail.service* in place as well as placing
-*ban2fail.sh* in '/usr/local/share/ban2fail/'.
+*ban2fail.service* points to *ban2fail.sh*, which can be tested from the command line for debugging.  Remember to make sure the service is disabled:
+```
+systemctl stop ban2fail
+```
 
-*ban2fail.sh* can also be tested from the command line.  The user must belong to
-group 'adm' in order to run iptables, which is accomplished via setuid() at the
-appropriate time.
+In order to run *ban2fail* as non-root user, the user must belong to group
+'adm'. This is so in order to run iptables, which is accomplished via setuid(0)
+at the appropriate time.
 
