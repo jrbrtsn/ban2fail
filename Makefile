@@ -20,6 +20,7 @@ src := \
        ez_es.c \
        ez_libc.c \
        ez_libdb.c \
+       ez_libpthread.c \
        ez_libz.c \
        iptables.c \
        logType.c \
@@ -79,7 +80,7 @@ install : release
 	@[ $(install_dir)_foo = _foo ] || cp release/ban2fail $(install_dir)/
 	@strip release/fsckdns
 	@[ $(install_dir)_foo = _foo ] || cp release/fsckdns $(install_dir)/
-	@[ -e install.sh ] && INSTALLDIR=$(install_dir) INSTALLTYPE=$(install_type) ./install.sh
+	@[ -e install.sh ] && INSTALLDIR=$(install_dir) INSTALLTYPE=$(install_type) sudo ./install.sh
 uninstall :
 clean :
 	$(RM) -r $(versions) core *.bak *.tab.h *.tab.c *.yy.c *.yy.h

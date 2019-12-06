@@ -2,6 +2,11 @@
 
 set -u
 
+if [[ $(id -u) != 0 ]]; then
+   echo 'This script must be run as root!'
+   exit 1
+fi
+
 BINDIR=/usr/local/bin
 CONFDIR=/etc/ban2fail
 OTHERDIR=/usr/local/share/ban2fail
@@ -17,38 +22,38 @@ LOCKDIR=/run/lock/ban2fail
 TEST_LOCKDIR=${LOCKDIR}-test
 
 # Make sure directories exist with correct ownership & mode
-[[ -e $OTHERDIR ]] || sudo mkdir $OTHERDIR
-sudo chmod 2755 $OTHERDIR
-sudo chown .adm $OTHERDIR
+[[ -e $OTHERDIR ]] || mkdir $OTHERDIR
+chmod 2755 $OTHERDIR
+chown .adm $OTHERDIR
 
-[[ -e $CONFDIR ]] || sudo mkdir $CONFDIR
-sudo chmod 2750 $CONFDIR
-sudo chown .adm $CONFDIR
+[[ -e $CONFDIR ]] || mkdir $CONFDIR
+chmod 2750 $CONFDIR
+chown .adm $CONFDIR
 # TODO: substitute correct hostname in config
-[[ -e $CONFDIR/$CONF ]] || sudo cp $CONF $CONFDIR
+[[ -e $CONFDIR/$CONF ]] || cp $CONF $CONFDIR
 
-[[ -e $BINDIR ]] || sudo mkdir $BINDIR
+[[ -e $BINDIR ]] || mkdir $BINDIR
 
 # No need for debugging symbols in binary
 strip release/$BIN
-sudo cp -f release/$BIN $BINDIR/
-sudo chown .adm $BINDIR/$BIN
+cp -f release/$BIN $BINDIR/
+chown .adm $BINDIR/$BIN
 # Need suid bit so non-root can run iptables
-sudo chmod 4755 $BINDIR/$BIN
+chmod 4755 $BINDIR/$BIN
 
 chmod +x $SVCSH
-sudo cp -f $SVCSH $OTHERDIR/
+cp -f $SVCSH $OTHERDIR/
 
-systemctl status ban2fail &>/dev/null && sudo systemctl stop ban2fail
+systemctl status ban2fail &>/dev/null && systemctl stop ban2fail
 # Clean out cache and lockfiles
-[[ -e $CACHEDIR ]] && sudo rm -r $CACHEDIR
-[[ -e $TEST_CACHEDIR ]] && sudo rm -r $TEST_CACHEDIR
-[[ -e $LOCKDIR ]] && sudo rm -r $LOCKDIR
-[[ -e $TEST_LOCKDIR ]] && sudo rm -r $TEST_LOCKDIR
-sudo cp $SVC $SVCDIR/
-sudo systemctl daemon-reload
-sudo systemctl start ban2fail
-sudo systemctl enable ban2fail
+[[ -e $CACHEDIR ]] && rm -r $CACHEDIR
+[[ -e $TEST_CACHEDIR ]] && rm -r $TEST_CACHEDIR
+[[ -e $LOCKDIR ]] && rm -r $LOCKDIR
+[[ -e $TEST_LOCKDIR ]] && rm -r $TEST_LOCKDIR
+cp $SVC $SVCDIR/
+systemctl daemon-reload
+systemctl start ban2fail
+systemctl enable ban2fail
 
 echo "Installation completed successfully"
 systemctl status ban2fail
