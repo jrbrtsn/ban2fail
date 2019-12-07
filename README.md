@@ -61,7 +61,7 @@ There are 3 basic types of reporting provided:
 
 ### Per-Address
 
-Per-address is the most useful report for a system administrator looking for
+Per-address is the most useful report to a system administrator looking for
 overly zealous address blocking. Records appear sorted with the most recent
 offenders on top. Here is a truncated sample report with full DNS information:
 
