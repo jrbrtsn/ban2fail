@@ -7,7 +7,7 @@ reporting, and iptables filtering. As the name implies, *ban2fail* was
 inspired by the popular *fail2ban* project (http://fail2ban.org). The main
 technical advantages *ban2fail* provides over *fail2ban* are:
 
-+ All relevant logfiles on disk are scanned, not just "current" logfiles.
++ All relevant logfiles on disk are scanned, not just the current log files.
 
 + A unique and transparent caching scheme is employed to make this process at
 least 100x as fast as doing the same thing with, say, *grep*.
@@ -26,7 +26,7 @@ call.
 
 + Written in pure C, with less than 15,000 lines of source code.
 
-+ Efficient enough to run every 0.4 seconds without saturating a CPU core on a
++ Efficient enough to run every 0.4 seconds without monopolizing a CPU core on a
 modest server.
 
 
