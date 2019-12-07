@@ -7,6 +7,9 @@ reporting, and iptables filtering. As the name implies, *ban2fail* was
 inspired by the popular *fail2ban* project (http://fail2ban.org). The main
 technical advantages *ban2fail* provides over *fail2ban* are:
 
++ When installed as a systemd service, filtering response is well under 0.5
+second.
+
 + By design all relevant logfiles on disk are scanned, not just the current
 log files.
 
