@@ -176,7 +176,7 @@ ID    136 blocked addresses
    155 countries affected
 ```
 
-### Log File Entries for Give Address(es)
+### Log File Entries for Given Address(es)
 
 Before unblocking any address it is usually necessary to investigate the
 offending log file entries. Here is an example:
