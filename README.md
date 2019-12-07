@@ -13,7 +13,7 @@ technical advantages *ban2fail* provides over *fail2ban* are:
 least 100x as fast as doing the same thing with, say, *grep*.
 
 + Instantaneously and conveniently produces on command all offending logfile
-entries for any given address which exist somewhere in the logfile history.
+entries which exist somewhere in the logfile history for given address(es).
 
 + Easily handles hundreds of thousands of blocked IP addresses.
 
