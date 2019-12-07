@@ -49,6 +49,138 @@ Currently I am running *ban2fail* from a *systemd* service file which triggers
 *ban2fail* whenever a watched log file is modified. This gives attackers at
 most a 0.4 second window to do their worst. I hope you find this code useful.
 
+## Reports
+
+There are 3 basic types of reporting provided:
+
++ per-address
+
++ per-country
+
++ log file entries for specific address(es)
+
+### Per-Address
+
+Per-address is the most useful report for a system administrator looking for
+overly zealous address blocking. Records appear sorted with the most recent
+offenders on top. Here is a truncated sample report with full DNS information:
+
+```
+ban2fail -a+
+=============== ban2fail v0.13.10 =============
+Scanning "/var/log/auth.log"... found 666 offenses (565 addresses)
+Scanning "/var/log/auth.log.1"... found 1143 offenses (1075 addresses)
+Scanning "/var/log/auth.log.2.gz"... found 217 offenses (174 addresses)
+Scanning "/var/log/auth.log.3.gz"... found 966 offenses (429 addresses)
+Scanning "/var/log/auth.log.4.gz"... found 267 offenses (168 addresses)
+>>>> Found 3259 offenses (2399 addresses) for /var/log/auth.log*
+Scanning "/var/log/exim4/mainlog"... found 92 offenses (90 addresses)
+Scanning "/var/log/exim4/mainlog.1"... found 319 offenses (284 addresses)
+Scanning "/var/log/exim4/mainlog.2.gz"... found 329 offenses (302 addresses)
+Scanning "/var/log/exim4/mainlog.3.gz"... found 315 offenses (295 addresses)
+Scanning "/var/log/exim4/mainlog.4.gz"... found 521 offenses (214 addresses)
+Scanning "/var/log/exim4/mainlog.5.gz"... found 254 offenses (229 addresses)
+Scanning "/var/log/exim4/mainlog.6.gz"... found 234 offenses (214 addresses)
+Scanning "/var/log/exim4/mainlog.7.gz"... found 256 offenses (238 addresses)
+Scanning "/var/log/exim4/mainlog.8.gz"... found 231 offenses (218 addresses)
+Scanning "/var/log/exim4/mainlog.9.gz"... found 330 offenses (213 addresses)
+Scanning "/var/log/exim4/mainlog.10.gz"... found 882 offenses (351 addresses)
+Scanning "/var/log/exim4/mainlog.11.gz"... found 1795 offenses (504 addresses)
+Scanning "/var/log/exim4/mainlog.12.gz"... found 2222 offenses (1201 addresses)
+Scanning "/var/log/exim4/mainlog.13.gz"... found 732 offenses (349 addresses)
+Scanning "/var/log/exim4/mainlog.14.gz"... found 736 offenses (370 addresses)
+>>>> Found 9248 offenses (4997 addresses) for /var/log/exim4/mainlog*
+Scanning "/var/log/apache2/access.log"... found 18 offenses (7 addresses)
+Scanning "/var/log/apache2/access.log.1"... found 734 offenses (54 addresses)
+Scanning "/var/log/apache2/access.log.2.gz"... found 649 offenses (23 addresses)
+Scanning "/var/log/apache2/access.log.3.gz"... found 383 offenses (6 addresses)
+Scanning "/var/log/apache2/access.log.4.gz"... found 235 offenses (4 addresses)
+Scanning "/var/log/apache2/access.log.5.gz"... found 75 offenses (4 addresses)
+Scanning "/var/log/apache2/access.log.6.gz"... found 156 offenses (2 addresses)
+Scanning "/var/log/apache2/access.log.7.gz"... found 815 offenses (6 addresses)
+Scanning "/var/log/apache2/access.log.8.gz"... found 582 offenses (27 addresses)
+Scanning "/var/log/apache2/access.log.9.gz"... found 1001 offenses (16 addresses)
+Scanning "/var/log/apache2/access.log.10.gz"... found 802 offenses (8 addresses)
+Scanning "/var/log/apache2/access.log.11.gz"... found 386 offenses (5 addresses)
+Scanning "/var/log/apache2/access.log.12.gz"... found 466 offenses (78 addresses)
+Scanning "/var/log/apache2/access.log.13.gz"... found 524 offenses (25 addresses)
+Scanning "/var/log/apache2/access.log.14.gz"... found 565 offenses (16 addresses)
+>>>> Found 7391 offenses (255 addresses) for /var/log/apache2/access.log*
+Scanning "/var/log/mail.log"... found 608 offenses (457 addresses)
+Scanning "/var/log/mail.log.1"... found 964 offenses (894 addresses)
+Scanning "/var/log/mail.log.2.gz"... found 170 offenses (5 addresses)
+Scanning "/var/log/mail.log.3.gz"... found 0 offenses (0 addresses)
+Scanning "/var/log/mail.log.4.gz"... found 0 offenses (0 addresses)
+>>>> Found 1742 offenses (1351 addresses) for /var/log/mail.log*
+===== Found 21640 total offenses (7660 addresses) =====
+Performing DNS lookups for up to 60 seconds ...
+	==> Completed 7660 of 7660 lookups in 60.0 seconds
+3 Dec 07 07:09      1/0    offenses US [BLK] 184.179.216.156 	 NXDOMAIN
+0 Dec 07 07:08      1/0    offenses US [BLK] 23.254.228.40 	client-23-254-228-40.hostwindsdns.com !!
+2 Dec 07 07:04      1/0    offenses HK [BLK] 47.91.220.119 	 NXDOMAIN
+3 Dec 07 06:57      2/0    offenses TR [BLK] 81.214.245.188 	81.214.245.188.dynamic.ttnet.com.tr !!
+0 Dec 07 06:51      1/0    offenses -- [BLK] 188.119.103.157 	 NXDOMAIN
+0 Dec 07 06:50      1/0    offenses GB [BLK] 185.217.230.211 	 SERVFAIL
+0 Dec 07 06:47      1/0    offenses RU [BLK] 92.38.176.115 	journalagricult.casa !
+0 Dec 07 06:47      1/0    offenses CO [BLK] 191.103.219.225 	xdsl-191-103-219-225.edatel.net.co !!
+4 Dec 07 06:46      2/0    offenses CN [BLK] 175.6.5.233 	 NXDOMAIN
+0 Dec 07 06:44      1/0    offenses UA [BLK] 109.87.78.144 	144.78.87.109.triolan.net !!
+0 Dec 07 06:36      1/0    offenses BR [BLK] 200.209.34.34 	 NXDOMAIN
+3 Dec 07 06:35      2/0    offenses US [BLK] 184.179.216.138 	 NXDOMAIN
+3 Dec 07 06:31      2/0    offenses CN [BLK] 120.33.205.162 	 NXDOMAIN
+0 Dec 07 06:30      1/0    offenses SG [BLK] 160.20.12.205 	 SERVFAIL
+--- snipped ---
+===============================================
+  7660 addresses currently blocked
+```
+
+### Per-Country
+
+Per-country reports show how blocked address are distributed between the countries:
+
+```
+ban2fail -c
+=============== ban2fail v0.13.10 =============
+Scanning "/var/log/auth.log"... found 666 offenses (565 addresses)
+Scanning "/var/log/auth.log.1"... found 1143 offenses (1075 addresses)
+--- snipped ---
+===== Found 21642 total offenses (7661 addresses) =====
+US   1335 blocked addresses
+CN    852 blocked addresses
+VN    619 blocked addresses
+RU    432 blocked addresses
+BR    414 blocked addresses
+IN    244 blocked addresses
+GB    197 blocked addresses
+--    196 blocked addresses
+AR    175 blocked addresses
+TH    141 blocked addresses
+FR    140 blocked addresses
+ID    136 blocked addresses
+--- snipped ---
+===============================================
+   155 countries affected
+```
+
+### Log File Entries for Give Address(es)
+
+It is usually necessary to investigate the log file entries for any address
+before unblocking. Here is an example:
+
+
+```
+ban2fail 184.179.216.156 23.254.228.40
+====== Report for 184.179.216.156 ======
+------- /var/log/auth.log -------------
+Dec  7 07:09:52 srv auth: pam_unix(dovecot:auth): authentication failure; logname= uid=0 euid=0 tty=dovecot ruser=andrews_maddie@robertsonoptical.com rhost=184.179.216.156
+------- /var/log/mail.log -------------
+Dec  7 07:12:29 srv dovecot: imap-login: Disconnected: Inactivity (auth failed, 1 attempts in 160 secs): user=<andrews_maddie@robertsonoptical.com>, method=PLAIN, rip=184.179.216.156, lip=50.116.38.131, TLS, session=<lZUGChyZ8+G4s9ic>
+====== Report for 23.254.228.40 ======
+------- /var/log/exim4/mainlog -------------
+2019-12-07 07:08:27 H=(green.medifeetz.icu) [23.254.228.40] F=<4434-1592-49095-1194-user=rrci.com@mail.medifeetz.icu> rejected RCPT <user@rrci.com>: 23.254.228.40 is listed at zen.spamhaus.org (127.0.0.3: https://www.spamhaus.org/sbl/query/SBLCSS)
+```
+
+
 ## Configuration
 
 *ban2fail* works from a configuration file found at
