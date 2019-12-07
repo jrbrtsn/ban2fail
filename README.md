@@ -29,7 +29,8 @@ call.
 + When reporting, DNS lookups are performed in parallel with 200 simultaneous
 lookups.
 
-+ Written in pure C, with less than 15,000 lines of source code.
++ Written in pure C, with less than 15,000 lines of source code. Your CPU has
+better things to do than load the python runtime ;-)
 
 + Efficient enough to run every 0.4 seconds without monopolizing a CPU core on a
 modest server.
