@@ -22,7 +22,8 @@ call.
 
 + Provides integrated reporting with reverse and forward DNS information.
 
-+ DNS lookups are performed in parallel with 200 simulataneous lookups.
++ When reporting, DNS lookups are performed in parallel with 200 simulataneous
+lookups.
 
 + Written in pure C, with less than 15,000 lines of source code.
 
