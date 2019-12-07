@@ -4,15 +4,39 @@
 
 **ban2fail** is a simple and efficient tool to coordinate log file scanning,
 reporting, and iptables filtering. As the name implies, *ban2fail* was
-inspired by the popular *fail2ban* project (http://fail2ban.org).
+inspired by the popular *fail2ban* project (http://fail2ban.org). The main
+technical advantages *ban2fail* provides over *fail2ban* are:
+
++ All relevant logfiles on disk are scanned, not just "current" logfiles.
+
++ A unique and transparent caching scheme is employed to make this process at
+least 100x as fast as doing the same thing with, say, *grep*.
+
++ Instantaneously and conveniently produces on command all offending logfile
+entries for any given address which exist somewhere in the logfile history.
+
++ Easily handles hundreds of thousands of blocked IP addresses.
+
++ Directly calls iptables, and handles filtering rules in batches of 100 per
+call.
+
++ Provides integrated reporting with reverse and forward DNS information.
+
++ DNS lookups are performed in parallel with 200 simulataneous lookups.
+
++ Written in pure C, with less than 15,000 lines of source code.
+
++ Efficient enough to run every 0.4 seconds without saturating a CPU core on a
+modest server.
+
 
 *ban2fail* started with a few hours of frenzied C hacking after my mail server
 was exploited to deliver spam for others who had cracked a user's SMTP send
 password. After inspecting the log files I realized that crackers are now using
 widely distributed attacks, and that I would need an extremely efficient tool
-that could run in a fraction of a second on my rather modest Linode virtual
-server to have a chance of stopping them. Here are the timing results for a
-typical scan on my server:
+that could scan my entire log file history in a fraction of a second on my
+rather modest Linode virtual server to have a chance of stopping them. Here are
+the timing results for a typical scan on my server:
 
 ```
 real    0m0.325s
