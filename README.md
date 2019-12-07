@@ -51,13 +51,27 @@ most a 0.4 second window to do their worst. I hope you find this code useful.
 
 ## Reports
 
-There are 3 basic types of reporting provided:
+There are 4 basic types of reporting provided:
+
++ summary
 
 + per-address
 
 + per-country
 
 + log file entries for specific address(es)
+
+### Summary
+
+The summary report is very brief, but useful for spotting sudden changes
+quickly:
+
+```
+ban2fail -s
+
+   155 countries affected
+  7669 addresses currently blocked
+```
 
 ### Per-Address
 
