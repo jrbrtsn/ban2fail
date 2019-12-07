@@ -164,17 +164,17 @@ ID    136 blocked addresses
 
 ### Log File Entries for Give Address(es)
 
-It is usually necessary to investigate the log file entries for any address
-before unblocking. Here is an example:
+Before unblocking any address it is usually necessary to investigate the
+offending log file entries. Here is an example:
 
 
 ```
 ban2fail 184.179.216.156 23.254.228.40
 ====== Report for 184.179.216.156 ======
 ------- /var/log/auth.log -------------
-Dec  7 07:09:52 srv auth: pam_unix(dovecot:auth): authentication failure; logname= uid=0 euid=0 tty=dovecot ruser=andrews_maddie@robertsonoptical.com rhost=184.179.216.156
+Dec  7 07:09:52 srv auth: pam_unix(dovecot:auth): authentication failure; logname= uid=0 euid=0 tty=dovecot ruser=andrews_maddie@somedomain.com rhost=184.179.216.156
 ------- /var/log/mail.log -------------
-Dec  7 07:12:29 srv dovecot: imap-login: Disconnected: Inactivity (auth failed, 1 attempts in 160 secs): user=<andrews_maddie@robertsonoptical.com>, method=PLAIN, rip=184.179.216.156, lip=50.116.38.131, TLS, session=<lZUGChyZ8+G4s9ic>
+Dec  7 07:12:29 srv dovecot: imap-login: Disconnected: Inactivity (auth failed, 1 attempts in 160 secs): user=<andrews_maddie@somedomain.com>, method=PLAIN, rip=184.179.216.156, lip=50.116.38.131, TLS, session=<lZUGChyZ8+G4s9ic>
 ====== Report for 23.254.228.40 ======
 ------- /var/log/exim4/mainlog -------------
 2019-12-07 07:08:27 H=(green.medifeetz.icu) [23.254.228.40] F=<4434-1592-49095-1194-user=rrci.com@mail.medifeetz.icu> rejected RCPT <user@rrci.com>: 23.254.228.40 is listed at zen.spamhaus.org (127.0.0.3: https://www.spamhaus.org/sbl/query/SBLCSS)
