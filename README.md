@@ -30,7 +30,7 @@ call.
 lookups.
 
 + Written in pure C, with less than 15,000 lines of source code. Your CPU has
-better things to do than load the python runtime ;-)
+better things to do than load the python runtime 10,000 times a day ;-)
 
 + Efficient enough to run every 0.4 seconds without monopolizing a CPU core on a
 modest server.
