@@ -72,7 +72,7 @@ There are 4 basic types of reporting provided:
 ### Summary
 
 The summary report is very brief, but useful for spotting sudden changes
-quickly:
+in numbers of filtered addresses:
 
 ```
 ban2fail -s
