@@ -20,145 +20,107 @@
 #define EZ_LIBDB_H
 
 /* Simplified interface to libanl functions */
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#       define _GNU_SOURCE
+#endif
 #include <db.h>
+
+#include "ez.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef DEBUG
-#       define ez_db_create(dbp, dbenv, flags) \
-         _ez_db_create(__FILE__, __LINE__, __FUNCTION__, dbp, dbenv, flags)
-#else
-#       define ez_db_create(dbp, dbenv, flags) \
-         _ez_db_create(dbp, dbenv, flags)
-#endif
-int _ez_db_create(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+ez_proto (int, create,
       DB **dbp,
       DB_ENV *dbenv,
-      u_int32_t flags
-     );
-
+      u_int32_t flags);
 #ifdef DEBUG
-#       define ez_db_open(db, txnid, file, database, type, flags, mode ) \
-         _ez_db_open(__FILE__, __LINE__, __FUNCTION__, db, txnid, file, database, type, flags, mode)
+#       define ez_db_create(...) \
+         _ez_db_create(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_db_open(db, txnid, file, database, type, flags, mode ) \
-         _ez_db_open(db, txnid, file, database, type, flags, mode)
+#       define ez_db_create(...) \
+         _ez_db_create(__VA_ARGS__)
 #endif
-int _ez_db_open(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+
+ez_proto (int, db_open,
       DB *db,
       DB_TXN *txnid,
       const char *file,
       const char *database,
       DBTYPE type,
       u_int32_t flags,
-      int mode
-      );
-
+      int mode);
 #ifdef DEBUG
-#       define ez_db_put(db, txnid, key, data, flags) \
-         _ez_db_put(__FILE__, __LINE__, __FUNCTION__, db, txnid, key, data, flags)
+#       define ez_db_open(...) \
+         _ez_db_open(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_db_put(db, txnid, key, data, flags) \
-         _ez_db_put(db, txnid, key, data, flags)
+#       define ez_db_open(...) \
+         _ez_db_open(__VA_ARGS__)
 #endif
-int _ez_db_put(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+
+ez_proto (int, db_put,
       DB *db,
       DB_TXN *txnid,
       DBT *key,
       DBT *data,
-      u_int32_t flags
-      );
-
+      u_int32_t flags);
 #ifdef DEBUG
-#       define ez_db_get(db, txnid, key, data, flags) \
-         _ez_db_get(__FILE__, __LINE__, __FUNCTION__, db, txnid, key, data, flags)
+#       define ez_db_put(...) \
+         _ez_db_put(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_db_get(db, txnid, key, data, flags) \
-         _ez_db_get(db, txnid, key, data, flags)
+#       define ez_db_put(...) \
+         _ez_db_put(__VA_ARGS__)
 #endif
-int _ez_db_get(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+
+ez_proto (int, db_get,
       DB *db,
       DB_TXN *txnid,
       DBT *key,
       DBT *data,
-      u_int32_t flags
-      );
-
+      u_int32_t flags);
 #ifdef DEBUG
-#       define ez_db_del(db, txnid, key, flags) \
-         _ez_db_del(__FILE__, __LINE__, __FUNCTION__, db, txnid, key, flags)
+#       define ez_db_get(...) \
+         _ez_db_get(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_db_del(db, txnid, key, flags) \
-         _ez_db_del(db, txnid, key, flags)
+#       define ez_db_get(...) \
+         _ez_db_get(__VA_ARGS__)
 #endif
-int _ez_db_del(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+
+ez_proto (int, db_del,
       DB *db,
       DB_TXN *txnid,
       DBT *key,
-      u_int32_t flags
-      );
-
+      u_int32_t flags);
 #ifdef DEBUG
-#       define ez_db_close(db, flags) \
-         _ez_db_close(__FILE__, __LINE__, __FUNCTION__, db, flags)
+#       define ez_db_del(...) \
+         _ez_db_del(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_db_close(db, flags) \
-         _ez_db_close(db, flags)
+#       define ez_db_del(...) \
+         _ez_db_del(__VA_ARGS__)
 #endif
-int _ez_db_close(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
-      DB *db,
-      u_int32_t flags
-      );
 
-#ifdef DEBUG
-#       define ez_db_fd(db, fdp) \
-         _ez_db_fd(__FILE__, __LINE__, __FUNCTION__, db, fdp)
-#else
-#       define ez_db_fd(db, fdp) \
-         _ez_db_fd(db, fdp)
-#endif
-int _ez_db_fd(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+ez_proto (int, db_close,
       DB *db,
-      int *fdp
-      );
+      u_int32_t flags);
+#ifdef DEBUG
+#       define ez_db_close(...) \
+         _ez_db_close(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#       define ez_db_close(...) \
+         _ez_db_close(__VA_ARGS__)
+#endif
+
+ez_proto (int, db_fd,
+      DB *db,
+      int *fdp);
+#ifdef DEBUG
+#       define ez_db_fd(...) \
+         _ez_db_fd(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#       define ez_db_fd(...) \
+         _ez_db_fd(__VA_ARGS__)
+#endif
 
 #ifdef __cplusplus
 }

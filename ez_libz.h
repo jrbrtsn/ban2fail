@@ -20,150 +20,106 @@
 #define EZ_GZFILE_H
 
 /* Simplified interface to libz file functions */
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#       define _GNU_SOURCE
+#endif
 #include <zlib.h>
+
+#include "ez.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef DEBUG
-#       define ez_gzopen(path, mode) \
-   _ez_gzopen(__FILE__, __LINE__, __FUNCTION__, path, mode)
-#else
-#       define ez_gzopen(path, mode) \
-   _ez_gzopen(path, mode)
-#endif
-gzFile _ez_gzopen(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
+ez_proto (gzFile, gzopen,
       const char *path,
-      const char *mode
-      );
-
+      const char *mode);
 #ifdef DEBUG
-#       define ez_gzclose(file) \
-   _ez_gzclose(__FILE__, __LINE__, __FUNCTION__, file)
+#       define ez_gzopen(...) \
+   _ez_gzopen(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_gzclose(file) \
-   _ez_gzclose(file)
+#       define ez_gzopen(...) \
+   _ez_gzopen(__VA_ARGS__)
 #endif
-int _ez_gzclose(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
-      gzFile file
-      );
 
+ez_proto (int, gzclose,
+      gzFile file);
 #ifdef DEBUG
-#       define ez_gzwrite(file, buf, len) \
-   _ez_gzwrite(__FILE__, __LINE__, __FUNCTION__, file, buf, len)
+#       define ez_gzclose(...) \
+   _ez_gzclose(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_gzwrite(file, buf, len) \
-   _ez_gzwrite(file, buf, len)
+#       define ez_gzclose(...) \
+   _ez_gzclose(__VA_ARGS__)
 #endif
-int _ez_gzwrite(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
+
+ez_proto (int, gzwrite,
       gzFile file,
       voidpc buf,
-      unsigned len
-      );
-
+      unsigned len);
 #ifdef DEBUG
-#       define ez_gzread(file, buf, len) \
-   _ez_gzread(__FILE__, __LINE__, __FUNCTION__, file, buf, len)
+#       define ez_gzwrite(...) \
+   _ez_gzwrite(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_gzread(file, buf, len) \
-   _ez_gzread(file, buf, len)
+#       define ez_gzwrite(...) \
+   _ez_gzwrite(__VA_ARGS__)
 #endif
-int _ez_gzread(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
+
+ez_proto (int, gzread,
       gzFile file,
       voidp buf,
-      unsigned len
-      );
-
+      unsigned len);
 #ifdef DEBUG
-#       define ez_gzflush(file, flush) \
-   _ez_gzflush(__FILE__, __LINE__, __FUNCTION__, file, flush)
+#       define ez_gzread(...) \
+   _ez_gzread(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_gzflush(file, flush) \
-   _ez_gzflush(file, flush)
+#       define ez_gzread(...) \
+   _ez_gzread(__VA_ARGS__)
 #endif
-int _ez_gzflush(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
+
+ez_proto (int, gzflush,
       gzFile file,
-      int flush 
-      );
-
+      int flush);
 #ifdef DEBUG
-#       define ez_gzseek(file, offset, whence) \
-   _ez_gzseek(__FILE__, __LINE__, __FUNCTION__, file, offset, whence)
+#       define ez_gzflush(...) \
+   _ez_gzflush(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_gzseek(file, offset, whence) \
-   _ez_gzseek(file, offset, whence)
+#       define ez_gzflush(...) \
+   _ez_gzflush(__VA_ARGS__)
 #endif
-z_off_t _ez_gzseek(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
+
+ez_proto (z_off_t, gzseek,
       gzFile file,
       z_off_t offset,
-      int whence
-      );
-
+      int whence);
 #ifdef DEBUG
-#       define ez_gztell(file) \
-   _ez_gztell(__FILE__, __LINE__, __FUNCTION__, file)
+#       define ez_gzseek(...) \
+   _ez_gzseek(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_gztell(file) \
-   _ez_gztell(file)
+#       define ez_gzseek(...) \
+   _ez_gzseek(__VA_ARGS__)
 #endif
-z_off_t _ez_gztell(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
-      gzFile file
-      );
 
+ez_proto (z_off_t, _ez_gztell,
+      gzFile file);
 #ifdef DEBUG
-#       define ez_gzgets(file, buf, len) \
-   _ez_gzgets(__FILE__, __LINE__, __FUNCTION__, file, buf, len)
+#       define ez_gztell(...) \
+   _ez_gztell(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_gzgets(file, buf, len) \
-   _ez_gzgets(file, buf, len)
+#       define ez_gztell(...) \
+   _ez_gztell(__VA_ARGS__)
 #endif
-char* _ez_gzgets (
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
+
+ez_proto (char*, gzgets, 
       gzFile file,
       char *buf,
-      int len
-      );
+      int len);
+#ifdef DEBUG
+#       define ez_gzgets(...) \
+   _ez_gzgets(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#       define ez_gzgets(...) \
+   _ez_gzgets(__VA_ARGS__)
+#endif
 
 #ifdef __cplusplus
 }

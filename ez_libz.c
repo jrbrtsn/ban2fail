@@ -23,15 +23,9 @@
 #include "util.h"
 
 /***************************************************/
-gzFile _ez_gzopen(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
+ez_proto (gzFile, gzopen,
       const char *path,
-      const char *mode
-      )
+      const char *mode)
 {
    gzFile rtn= gzopen(path, mode);
    if(rtn) return rtn;
@@ -45,14 +39,7 @@ gzFile _ez_gzopen(
 }
 
 /***************************************************/
-int _ez_gzclose(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
-      gzFile file
-      )
+ez_proto (int, gzclose, gzFile file)
 {
    int err= gzclose(file);
    if(Z_OK == err) return Z_OK;
@@ -91,16 +78,10 @@ int _ez_gzclose(
 }
 
 /***************************************************/
-int _ez_gzwrite(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
+ez_proto (int, gzwrite,
       gzFile file,
       voidpc buf,
-      unsigned len
-      )
+      unsigned len)
 {
    int n= gzwrite(file, buf, len);
    if(n == len) return n;
@@ -124,16 +105,10 @@ int _ez_gzwrite(
 }
 
 /***************************************************/
-int _ez_gzread(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
+ez_proto (int, gzread,
       gzFile file,
       voidp buf,
-      unsigned len
-      )
+      unsigned len)
 {
    int n= gzread(file, buf, len);
    if(-1 != n) return n;
@@ -157,15 +132,7 @@ int _ez_gzread(
 }
 
 /***************************************************/
-int _ez_gzflush(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
-      gzFile file,
-      int flush 
-      )
+ez_proto (int, gzflush, gzFile file, int flush)
 {
    int err= gzflush(file, flush);
    if(Z_OK == err) return Z_OK;
@@ -188,16 +155,10 @@ int _ez_gzflush(
 }
 
 /***************************************************/
-z_off_t _ez_gzseek(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
+ez_proto (z_off_t, gzseek,
       gzFile file,
       z_off_t offset,
-      int whence
-      )
+      int whence)
 {
    z_off_t rtn= gzseek(file, offset, whence);
    if(-1 != rtn) return rtn;
@@ -221,16 +182,10 @@ z_off_t _ez_gzseek(
 }
 
 /***************************************************/
-char* _ez_gzgets (
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
+ez_proto (char*, gzgets, 
       gzFile file,
       char *buf,
-      int len
-      )
+      int len)
 {
    char *rtn= gzgets(file, buf, len);
 
@@ -259,14 +214,8 @@ char* _ez_gzgets (
 }
 
 /***************************************************/
-z_off_t _ez_gztell(
-#ifdef DEBUG
-      const char *fileName,
-      int lineNo,
-      const char *funcName,
-#endif
-      gzFile file
-      )
+ez_proto (z_off_t, _ez_gztell,
+      gzFile file)
 {
    z_off_t rtn= gztell(file);
    if(-1 != rtn) return rtn;

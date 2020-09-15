@@ -23,7 +23,7 @@
 #include <limits.h>
 #include <signal.h>
 
-#include "ez_es.h"
+#include "es.h"
 #include "ez_libc.h"
 #include "ez_libpthread.h"
 #include "msgqueue.h"

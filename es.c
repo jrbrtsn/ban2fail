@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,11 +7,11 @@
 #include <time.h>
 #include <assert.h>
 
-#include "util.h"
-#include "msgqueue.h"
-#include "ez_es.h"
-#include "map.h"
+#include "es.h"
 #include "ez_libpthread.h"
+#include "map.h"
+#include "msgqueue.h"
+#include "util.h"
 
 /* Types of registered callbacks */
 enum ES_type {
@@ -79,9 +80,14 @@ static _Thread_local struct _TS {
     */
    pthread_t tid;
 
+   enum {
+      TS_PROCESSING_FLG= 1<<0
+   } flags;
+
    /* Vectors of Cb by type, for fast processing */
    PTRVEC fd_vec,
-          timer_vec;
+          timer_vec,
+          deleted_vec;
    PTRVEC sig_vec_arr[NUMSIGS]; // One vector for each Unix signal
 
    /* Hash table to quickly find Cb's */
@@ -97,6 +103,7 @@ static _Thread_local struct _TS {
       MSGQUEUE mq;
       MAP cb_map;
    } vsig;
+
 
 } TS;
 
@@ -114,6 +121,10 @@ UnixSignalHandler (int signo)
 /** Class for callback objects ************************************/
 /******************************************************************/
 typedef struct {
+
+   enum {
+      CB_DELETED_FLG=1<<31
+   } flags;
 
    int64_t lastActivity_ms;
 
@@ -188,6 +199,7 @@ Cb_FdConstructor(
  */
 {
    assert(self);
+   memset(self, 0, sizeof(*self));
    self->key= ++S.keySrc;
    self->type= ES_FD_TYPE;
    self->un.fd.fd= fd;
@@ -213,6 +225,7 @@ Cb_SignalConstructor(
  */
 {
    assert(self);
+   memset(self, 0, sizeof(*self));
    self->key= ++S.keySrc;
    self->type= ES_SIG_TYPE;
    self->un.sig.signum= signum;
@@ -235,6 +248,7 @@ Cb_VSignalConstructor(
  */
 {
    assert(self);
+   memset(self, 0, sizeof(*self));
    self->key= ++S.keySrc;
    self->type= ES_VSIG_TYPE;
    self->un.sig.signum= signum;
@@ -258,6 +272,7 @@ Cb_TimerConstructor(
  */
 {
    assert(self);
+   memset(self, 0, sizeof(*self));
    self->key= ++S.keySrc;
    self->type= ES_TIMER_TYPE;
 #if ! (defined (_WIN32) || defined (__CYGWIN__))
@@ -337,7 +352,8 @@ initialize()
    if(!(S.flags & GLOBAL_INIT_FLG)) {
 
       S.flags |= GLOBAL_INIT_FLG;
-      if(-1 == sigemptyset(&S.dflt_sa.set)) assert(0);
+      if(-1 == sigemptyset(&S.dflt_sa.set))
+         assert(0);
       MAP_constructor(&S.vsig.thrd_ts_map, 10, 10);
    }
    /* Release the global mutex */
@@ -346,10 +362,12 @@ initialize()
    /* Per-thread static data */
    PTRVEC_constructor(&TS.fd_vec, 10);
    PTRVEC_constructor(&TS.timer_vec, 10);
+   PTRVEC_constructor(&TS.deleted_vec, 10);
    for(int i= 0; i < NUMSIGS; ++i) {
       PTRVEC_constructor(&TS.sig_vec_arr[i], 10);
    }
-   if(-1 == sigemptyset(&TS.sigsRaised)) assert(0);
+   if(-1 == sigemptyset(&TS.sigsRaised))
+      assert(0);
 
    MAP_constructor(&TS.key_map, 10, 10);
 
@@ -411,16 +429,19 @@ ES_registerSignal (
 
          sigaddset(&S.dflt_sa.set, signum);
 
-         if (sigaction (signum, &act, &S.dflt_sa.arr[ndx])) assert (0);
+         if (sigaction (signum, &act, &S.dflt_sa.arr[ndx]))
+            assert (0);
 
       } else {
 
-         if (sigaction (signum, &act, NULL)) assert (0);
+         if (sigaction (signum, &act, NULL))
+            assert (0);
 
       }
    }
 
-   if(!Cb_SignalCreate(cb, signum, callback_f, ctxt)) assert(0);
+   if(!Cb_SignalCreate(cb, signum, callback_f, ctxt))
+      assert(0);
 
    /* All callbacks are put in the key table */
    MAP_addTypedKey(&TS.key_map, cb->key, cb);
@@ -455,7 +476,8 @@ ES_registerVSignal (
 
    Cb *cb;
 
-   if(!Cb_VSignalCreate(cb, signum, callback_f, ctxt)) assert(0);
+   if(!Cb_VSignalCreate(cb, signum, callback_f, ctxt))
+      assert(0);
 
    /* Place in the virtual signal map indexed on signum */
    MAP_addTypedKey(&TS.vsig.cb_map, cb->un.sig.signum, cb);
@@ -481,7 +503,8 @@ ES_registerFd (
    if(TS.tid != pthread_self()) initialize();
 
    Cb *cb;
-   if(!Cb_FdCreate(cb, fd, events, callback_f, ctxt)) assert(0);
+   if(!Cb_FdCreate(cb, fd, events, callback_f, ctxt))
+      assert(0);
 
    /* Index to vector for quick processing */
    PTRVEC_addTail(&TS.fd_vec, cb);
@@ -505,7 +528,8 @@ ES_registerTimer (
    if(TS.tid != pthread_self()) initialize();
 
    Cb *cb;
-   if(!Cb_TimerCreate(cb, pause_ms, interval_ms, callback_f, ctxt)) assert(0);
+   if(!Cb_TimerCreate(cb, pause_ms, interval_ms, callback_f, ctxt))
+      assert(0);
 
    /* Add to the timer vector */
    PTRVEC_addTail(&TS.timer_vec, cb);
@@ -525,17 +549,33 @@ ES_unregister (int key)
    if(TS.tid != pthread_self()) initialize();
 
    Cb *cb = MAP_findTypedItem(&TS.key_map, key);
-   if(!cb) return -1;
+   if(!cb) {
+#ifdef qqDEBUG
+      eprintf("WARNING: could not find callback with key= %d", key);
+#endif
+      return -1;
+   }
+
+   /* If the callback processing is currently active, do not delete it */
+   if(TS.flags & TS_PROCESSING_FLG) {
+      if(!(cb->flags & CB_DELETED_FLG)) {
+         cb->flags |= CB_DELETED_FLG;
+         PTRVEC_addTail(&TS.deleted_vec, cb);
+      }
+      return 0;
+   }
 
    /* Remove from key table */
-   if(!MAP_removeTypedItem(&TS.key_map, key)) assert(0);;
+   if(!MAP_removeTypedItem(&TS.key_map, key))
+      assert(0);
 
    /* Different operations needed based on type */
    switch(cb->type) {
 
       case ES_FD_TYPE:
          /* Remove from file descriptor vector */
-         if(!PTRVEC_remove(&TS.fd_vec, cb)) assert(0);
+         if(!PTRVEC_remove(&TS.fd_vec, cb))
+            assert(0);
          break;
 
       case ES_SIG_TYPE:
@@ -543,7 +583,8 @@ ES_unregister (int key)
             unsigned ndx= signum2dflt_sa_ndx(cb->un.sig.signum);
 
             /* Remove from appropriate signals vector */
-            if(!PTRVEC_remove(&TS.sig_vec_arr[ndx], cb)) assert(0);
+            if(!PTRVEC_remove(&TS.sig_vec_arr[ndx], cb))
+               assert(0);
 
             /* If there are no more signals in this vector */
             if(!PTRVEC_numItems(&TS.sig_vec_arr[ndx])) {
@@ -551,17 +592,20 @@ ES_unregister (int key)
                assert(sigismember(&S.dflt_sa.set, cb->un.sig.signum));
 
                /* Restore default signal handling */
-               if (sigaction (cb->un.sig.signum, &S.dflt_sa.arr[ndx], NULL)) assert (0);
+               if (sigaction (cb->un.sig.signum, &S.dflt_sa.arr[ndx], NULL))
+                  assert (0);
             }
          } break;
 
       case ES_VSIG_TYPE:
-         if(!MAP_removeSpecificTypedItem(&TS.vsig.cb_map, cb->un.sig.signum, cb)) assert(0);
+         if(!MAP_removeSpecificTypedItem(&TS.vsig.cb_map, cb->un.sig.signum, cb))
+            assert(0);
          break;
 
       case ES_TIMER_TYPE:
          /* Remove from timer vector */
-         if(!PTRVEC_remove(&TS.timer_vec, cb)) assert(0);
+         if(!PTRVEC_remove(&TS.timer_vec, cb))
+            assert(0);
          break;
 
       default:
@@ -612,22 +656,23 @@ ES_run (void)
  * Whatever nonzero value one of the callbacks() returned.
  */ 
 {
+   int rtn= -1;
 
    if(TS.tid != pthread_self())
       initialize();
 
    /* Loop forever */
    for(;;) {
+      TS.flags |= TS_PROCESSING_FLG;
 
       int numFds= PTRVEC_numItems(&TS.fd_vec);
       struct pollfd pollItemArr[numFds];
       Cb *cbArr[numFds];
 
-
       /* This sort provides fair queuing */
       PTRVEC_sort(&TS.fd_vec, lastActivity_cmp);
 
-      /****** Load up the ZeroMQ pollItemArr *****/
+      /****** Load up the pollItemArr *****/
       unsigned i;
       Cb *cb;
       PTRVEC_loopFwd(&TS.fd_vec, i, cb) {
@@ -694,8 +739,8 @@ ES_run (void)
          switch(errno) {
 
             case EFAULT:
-               eprintf("\tpoll() failed");
-               return -1;
+               eprintf("ERROR: poll() failed");
+               goto abort;
 
             case EINTR:
                /* Signal caused poll() to return, which is OK */
@@ -725,10 +770,14 @@ ES_run (void)
 
                assert(ES_SIG_TYPE == cb->type);
 
-               /* Call the callback function */
-               int error= (* cb->un.sig.callback_f)(cb->ctxt, signum);
+               if(cb->flags & CB_DELETED_FLG)
+                  continue;
 
-               if(error) return error;
+               /* Call the callback function */
+               rtn= (* cb->un.sig.callback_f)(cb->ctxt, signum);
+
+               if(rtn)
+                  goto abort;
             }
          }
       }
@@ -747,6 +796,9 @@ ES_run (void)
 
          PTRVEC_loopFwd(&TS.timer_vec, i, cb) {
 
+            if(cb->flags & CB_DELETED_FLG)
+               continue;
+
             /* See how much time remains for this callback */
             remaining_ms= msec2timeout(cb, time_ms);
 
@@ -757,7 +809,7 @@ ES_run (void)
                ++cb->un.timer.count;
 
                /* Call the callback function */
-               int error= (* cb->un.timer.callback_f)(cb->ctxt);
+               rtn= (* cb->un.timer.callback_f)(cb->ctxt);
 
                /* If this is a single-shot timer, get rid of it now */
                if(!cb->un.timer.interval_ms) {
@@ -767,9 +819,11 @@ ES_run (void)
                }
 
                /* If the callback returned non-zero, bail out */
-               if(error) return error;
+               if(rtn)
+                  goto abort;
 
-            } else break;  /* time remaining will increase from here on out */
+            } else
+               break;  /* time remaining will increase from here on out */
          }
       }
 
@@ -783,31 +837,36 @@ ES_run (void)
 
          Cb *cb= cbArr[i];
 
+         if(cb->flags & CB_DELETED_FLG)
+            continue;
+
 #if ! (defined (_WIN32) || defined (__CYGWIN__))
          cb->lastActivity_ms= clock_gettime_ms(CLOCK_MONOTONIC_COARSE);
 #else
          cb->lastActivity_ms= clock_gettime_ms(CLOCK_MONOTONIC);
 #endif
 
-         int error;
-         switch(cb->type) {
+         assert(ES_FD_TYPE == cb->type);
 
-            case ES_FD_TYPE:
-               /* Call the callback function */
-               error= (* cb->un.fd.callback_f)(cb->ctxt, item->fd, item->revents);
-               break;
-
-            default:
-               assert(0);
-         }
+         rtn= (* cb->un.fd.callback_f)(cb->ctxt, item->fd, item->revents);
 
          /* If the callback returned non-zero, bail out */
-         if(error) return error;
+         if(rtn)
+            goto abort;
+      }
+
+      { /*--- Free any callbacks marked for deletion ---*/
+         Cb *cb;
+         TS.flags &= ~TS_PROCESSING_FLG;
+         while((cb= PTRVEC_remTail(&TS.deleted_vec))) {
+            if(ES_unregister(cb->key))
+               assert(0);
+         }
       }
    }
 
-   /* Shouldn't ever get to here */
-   assert(0);
+abort:
+   return rtn;
 }
 
 pthread_t
@@ -979,3 +1038,135 @@ abort:
    ez_pthread_mutex_unlock(&S.vsig.mtx);
    return rtn;
 }
+
+/*=====================================================================================*/
+/*===================== ez_xxx() ======================================================*/
+/*=====================================================================================*/
+
+/***************************************************/
+ez_proto (int, ES_registerFd, 
+      int fd,
+      short events,
+      int (*callback_f)(void *ctxt, int fd, short events),
+      void *ctxt
+      )
+{
+   int rtn= ES_registerFd(fd, events, callback_f, ctxt);
+   if(-1 == rtn) {
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ES_registerFd() failed.");
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+
+ez_proto (int, ES_registerSignal,
+      int signum,
+      int (*callback_f)(void *ctxt, int signo),
+      void *ctxt
+      )
+{
+   int rtn= ES_registerSignal(signum, callback_f, ctxt);
+   if(-1 == rtn) {
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ES_registerSignal() failed.");
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+
+ez_proto (int, ES_registerVSignal,
+      int signum,
+      int (*callback_f)(void *ctxt,int signo),
+      void *ctxt
+      )
+{
+   int rtn= ES_registerVSignal(signum, callback_f, ctxt);
+   if(-1 == rtn) {
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+             "ES_registerVSignal() failed.");
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+ez_proto (int, ES_VSignal,
+      pthread_t tid,
+      int signum)
+{
+   int rtn= ES_VSignal(tid, signum);
+   if(rtn) {
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ES_VSignal() returned %d.", rtn);
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+ez_proto (int, ES_registerTimer, 
+      int64_t pause_ms,
+      int64_t interval_ms,
+      int (*callback_f)(void *ctxt),
+      void *ctxt
+      )
+{
+   int rtn= ES_registerTimer(pause_ms, interval_ms, callback_f, ctxt);
+   if(-1 == rtn) {
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ES_registerTimer() failed.");
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+ez_proto ( int, ES_unregister, int key)
+{
+   int rtn= ES_unregister(key);
+   if(-1 == rtn) {
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ES_unregister() failed.");
+      abort();
+   }
+   return rtn;
+}
+
+/***************************************************/
+ez_proto (int, ES_run)
+{
+   int rtn= ES_run();
+   if(rtn) {
+      _eprintf(
+#ifdef DEBUG
+            fileName, lineNo, funcName,
+#endif
+            "ES_run() returned %d", rtn);
+      abort();
+   }
+   return rtn;
+}
+

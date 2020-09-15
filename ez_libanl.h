@@ -20,49 +20,40 @@
 #define EZ_LIBANL_H
 
 /* Simplified interface to libanl functions */
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#       define _GNU_SOURCE
+#endif
 #include <netdb.h>
+#include "ez.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef DEBUG
-#       define ez_getaddrinfo_a(mode, list, nItems, sevp) \
-         _ez_getaddrinfo_a(__FILE__, __LINE__, __FUNCTION__, mode, list, nItems, sevp)
-#else
-#       define ez_getaddrinfo_a(mode, list, nItems, sevp) \
-         _ez_getaddrinfo_a(mode, list, nItems, sevp)
-#endif
-int _ez_getaddrinfo_a(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+ez_proto(int, getaddrinfo_a,
       int mode,
       struct gaicb *list[],
       int nitems,
-      struct sigevent *sevp
-      );
-
+      struct sigevent *sevp);
 #ifdef DEBUG
-#       define ez_gai_suspend(list, nItems, timeout) \
-         _ez_gai_suspend(__FILE__, __LINE__, __FUNCTION__, list, nItems, timeout)
+#       define ez_getaddrinfo_a(...) \
+         _ez_getaddrinfo_a(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_gai_suspend(list, nItems, timeout) \
-         _ez_gai_suspend(list, nItems, timeout)
+#       define ez_getaddrinfo_a(...) \
+         _ez_getaddrinfo_a(__VA_ARGS__)
 #endif
-int _ez_gai_suspend(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+
+ez_proto (int, gai_suspend,
       const struct gaicb * const list[],
       int nitems,
-      const struct timespec *timeout
-      );
+      const struct timespec *timeout);
+#ifdef DEBUG
+#       define ez_gai_suspend(...) \
+         _ez_gai_suspend(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#       define ez_gai_suspend(...) \
+         _ez_gai_suspend(__VA_ARGS__)
+#endif
 
 
 #ifdef __cplusplus

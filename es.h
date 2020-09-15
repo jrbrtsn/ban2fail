@@ -7,20 +7,23 @@
 * timers.
 ****************************************************************************************/
 
+#ifndef _GNU_SOURCE
+#       define _GNU_SOURCE
+#endif
 #include <pthread.h>
 #include <stdint.h>
+
+#include "ez.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int
-ES_registerFd (
+ez_hdr_proto (int, ES_registerFd, 
       int fd,
       short events,
       int (*callback_f)(void *ctxt, int fd, short events),
-      void *ctxt
-      );
+      void *ctxt);
 /**********************************************************************
  * Register a function to be called when there is activity on the
  * file descriptor (which may be a file, socket, pipe, etc. under Unix).
@@ -34,13 +37,18 @@ ES_registerFd (
  * If successful, a positive integer which can be used to unregister the callback.
  * On failure, -1 is returned.
  */ 
+#ifdef DEBUG
+#       define ez_ES_registerFd(...) \
+   _ez_ES_registerFd(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#       define ez_ES_registerFd(...) \
+   _ez_ES_registerFd(__VA_ARGS__)
+#endif
 
-int
-ES_registerSignal (
+ez_hdr_proto (int, ES_registerSignal,
       int signum,
       int (*callback_f)(void *ctxt, int signo),
-      void *ctxt
-      );
+      void *ctxt);
 /**********************************************************************
  * Register a function to be called when a particular Unix signal is
  * raised. Note: callback_f() is not called from a Unix signal handler,
@@ -54,13 +62,18 @@ ES_registerSignal (
  * If successful, a positive integer which can be used to unregister the callback.
  * On failure, -1 is returned.
  */ 
+#ifdef DEBUG
+#       define ez_ES_registerSignal(...) \
+   _ez_ES_registerSignal(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#       define ez_ES_registerSignal(...) \
+   _ez_ES_registerSignal(__VA_ARGS__)
+#endif
 
-int
-ES_registerVSignal (
+ez_hdr_proto (int, ES_registerVSignal,
       int signum,
       int (*callback_f)(void *ctxt,int signo),
-      void *ctxt
-      );
+      void *ctxt);
 /**********************************************************************
  * Register a function to be called when a particular virtual signal is
  * raised. Virtual signals are implemented on top of the Unix signal, SIGUSR2.
@@ -73,9 +86,17 @@ ES_registerVSignal (
  * If successful, a positive integer which can be used to unregister the callback.
  * On failure, -1 is returned.
  */ 
+#ifdef DEBUG
+#       define ez_ES_registerVSignal(...) \
+   _ez_ES_registerVSignal(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#       define ez_ES_registerVSignal(...) \
+   _ez_ES_registerVSignal(__VA_ARGS__)
+#endif
 
-int
-ES_VSignal (pthread_t tid, int signum);
+ez_hdr_proto (int, ES_VSignal,
+      pthread_t tid,
+      int signum);
 /**********************************************************************
  * Send a virtual signal to tid, which is multiplexed on SIGUSR2.
  *
@@ -86,9 +107,15 @@ ES_VSignal (pthread_t tid, int signum);
  * 0:   successful
  * -1:  failures.
  */ 
+#ifdef DEBUG
+#       define ez_ES_VSignal(...) \
+   _ez_ES_VSignal(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#       define ez_ES_VSignal(...) \
+   _ez_ES_VSignal(__VA_ARGS__)
+#endif
 
-int
-ES_registerTimer (
+ez_hdr_proto (int, ES_registerTimer, 
       int64_t pause_ms,
       int64_t interval_ms,
       int (*callback_f)(void *ctxt),
@@ -109,11 +136,16 @@ ES_registerTimer (
  * If successful, a positive integer which can be used to unregister the callback.
  * On failure, -1 is returned.
  */ 
+#ifdef DEBUG
+#       define ez_ES_registerTimer(...) \
+   _ez_ES_registerTimer(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#       define ez_ES_registerTimer(...) \
+   _ez_ES_registerTimer(__VA_ARGS__)
+#endif
 
-
-
-int
-ES_unregister (int key);
+ez_hdr_proto (int, ES_unregister,
+      int key);
 /**********************************************************************
  * Unegister a previously registered callback. 
  *
@@ -123,10 +155,15 @@ ES_unregister (int key);
  * 0 for success.
  * -1 for failure (key not found)
  */ 
+#ifdef DEBUG
+#       define ez_ES_unregister(...) \
+   _ez_ES_unregister(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#       define ez_ES_unregister(...) \
+   _ez_ES_unregister(__VA_ARGS__)
+#endif
 
-
-int
-ES_run (void);
+ez_hdr_proto (int, ES_run);
 /**********************************************************************
  * For this thread, use poll() to process socket activity until one
  * of the registered callback_f() returns non-zero.
@@ -134,6 +171,13 @@ ES_run (void);
  * RETURNS:
  * Whatever nonzero value callback_f() returned.
  */ 
+#ifdef DEBUG
+#       define ez_ES_run(...) \
+   _ez_ES_run(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#       define ez_ES_run(...) \
+   _ez_ES_run(__VA_ARGS__)
+#endif
 
 pthread_t
 ES_spawn_thread_sched(

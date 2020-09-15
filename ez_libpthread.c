@@ -25,14 +25,7 @@
 #include "util.h"
 
 /***************************************************/
-int _ez_pthread_mutex_lock(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
-      pthread_mutex_t *mutex
-      )
+ez_proto (int, pthread_mutex_lock, pthread_mutex_t *mutex)
 {
    int rtn= pthread_mutex_lock (mutex);
    if(0 == rtn) return 0;
@@ -47,14 +40,7 @@ int _ez_pthread_mutex_lock(
 }
 
 /***************************************************/
-int _ez_pthread_mutex_unlock(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
-      pthread_mutex_t *mutex
-      )
+ez_proto (int, pthread_mutex_unlock, pthread_mutex_t *mutex)
 {
    int rtn= pthread_mutex_unlock (mutex);
    if(0 == rtn) return 0;
@@ -69,17 +55,11 @@ int _ez_pthread_mutex_unlock(
 }
 
 /***************************************************/
-int _ez_pthread_create(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+ez_proto (int, pthread_create,
       pthread_t *thread,
       const pthread_attr_t *attr,
       void *(*start_routine) (void *),
-      void *arg
-      )
+      void *arg)
 {
    int rtn= pthread_create (thread, attr, start_routine, arg);
    if(0 == rtn) return 0;
@@ -94,14 +74,7 @@ int _ez_pthread_create(
 }
 
 /***************************************************/
-int _ez_pthread_cond_signal(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
-      pthread_cond_t *cond
-      )
+ez_proto (int, pthread_cond_signal, pthread_cond_t *cond)
 {
    int rtn= pthread_cond_signal (cond);
    if(0 == rtn) return 0;
@@ -116,15 +89,9 @@ int _ez_pthread_cond_signal(
 }
 
 /***************************************************/
-int _ez_pthread_cond_wait(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+ez_proto (int, pthread_cond_wait,
       pthread_cond_t *cond,
-      pthread_mutex_t *mutex
-      )
+      pthread_mutex_t *mutex)
 {
    int rtn= pthread_cond_wait (cond, mutex);
    if(0 == rtn) return 0;
@@ -139,15 +106,9 @@ int _ez_pthread_cond_wait(
 }
 
 /***************************************************/
-int _ez_pthread_join(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+ez_proto (int, pthread_join,
       pthread_t thread,
-      void **retval
-      )
+      void **retval)
 {
    int rtn= pthread_join (thread, retval);
    if(0 == rtn) return 0;

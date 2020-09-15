@@ -20,113 +20,81 @@
 #define EZ_LIBPTHREAD_H
 
 /* Simplified interface to libpthread functions */
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#       define _GNU_SOURCE
+#endif
 #include <pthread.h>
+
+#include "ez.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+ez_proto (int, pthread_mutex_lock,
+      pthread_mutex_t *mutex);
 #ifdef DEBUG
-#       define ez_pthread_mutex_lock(mutex) \
-         _ez_pthread_mutex_lock(__FILE__, __LINE__, __FUNCTION__, mutex)
+#       define ez_pthread_mutex_lock(...) \
+         _ez_pthread_mutex_lock(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_pthread_mutex_lock(mutex) \
-         _ez_pthread_mutex_lock(mutex)
+#       define ez_pthread_mutex_lock(...) \
+         _ez_pthread_mutex_lock(__VA_ARGS__)
 #endif
-int _ez_pthread_mutex_lock(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
-      pthread_mutex_t *mutex
-      );
 
+ez_proto (int, pthread_mutex_unlock,
+      pthread_mutex_t *mutex);
 #ifdef DEBUG
-#       define ez_pthread_mutex_unlock(mutex) \
-         _ez_pthread_mutex_unlock(__FILE__, __LINE__, __FUNCTION__, mutex)
+#       define ez_pthread_mutex_unlock(...) \
+         _ez_pthread_mutex_unlock(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_pthread_mutex_unlock(mutex) \
-         _ez_pthread_mutex_unlock(mutex)
+#       define ez_pthread_mutex_unlock(...) \
+         _ez_pthread_mutex_unlock(__VA_ARGS__)
 #endif
-int _ez_pthread_mutex_unlock(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
-      pthread_mutex_t *mutex
-      );
 
-#ifdef DEBUG
-#       define ez_pthread_create(thread, addr, start_routine, arg) \
-         _ez_pthread_create(__FILE__, __LINE__, __FUNCTION__, thread, addr, start_routine, arg)
-#else
-#       define ez_pthread_create(thread, addr, start_routine, arg) \
-         _ez_pthread_create(thread, addr, start_routine, arg)
-#endif
-int _ez_pthread_create(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+ez_proto (int, pthread_create,
       pthread_t *thread,
       const pthread_attr_t *attr,
       void *(*start_routine) (void *),
-      void *arg
-      );
-
+      void *arg);
 #ifdef DEBUG
-#       define ez_pthread_cond_signal(cond) \
-         _ez_pthread_cond_signal(__FILE__, __LINE__, __FUNCTION__, cond)
+#       define ez_pthread_create(...) \
+         _ez_pthread_create(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_pthread_cond_signal(cond) \
-         _ez_pthread_cond_signal(cond)
+#       define ez_pthread_create(...) \
+         _ez_pthread_create(__VA_ARGS__)
 #endif
-int _ez_pthread_cond_signal(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
-      pthread_cond_t *cond
-      );
 
+ez_proto (int, pthread_cond_signal,
+      pthread_cond_t *cond);
 #ifdef DEBUG
-#       define ez_pthread_cond_wait(cond, mutex) \
-         _ez_pthread_cond_wait(__FILE__, __LINE__, __FUNCTION__, cond, mutex)
+#       define ez_pthread_cond_signal(...) \
+         _ez_pthread_cond_signal(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_pthread_cond_wait(cond, mutex) \
-         _ez_pthread_cond_wait(cond, mutex)
+#       define ez_pthread_cond_signal(...) \
+         _ez_pthread_cond_signal(__VA_ARGS__)
 #endif
-int _ez_pthread_cond_wait(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+
+ez_proto (int, pthread_cond_wait,
       pthread_cond_t *cond,
-      pthread_mutex_t *mutex
-      );
-
+      pthread_mutex_t *mutex);
 #ifdef DEBUG
-#       define ez_pthread_join(thread, retval) \
-         _ez_pthread_join(__FILE__, __LINE__, __FUNCTION__, thread, retval)
+#       define ez_pthread_cond_wait(...) \
+         _ez_pthread_cond_wait(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#       define ez_pthread_join(thread, retval) \
-         _ez_pthread_join(thread, retval)
+#       define ez_pthread_cond_wait(...) \
+         _ez_pthread_cond_wait(__VA_ARGS__)
 #endif
-int _ez_pthread_join(
-#ifdef DEBUG
-   const char *fileName,
-   int lineNo,
-   const char *funcName,
-#endif
+
+ez_proto (int, pthread_join,
       pthread_t thread,
-      void **retval
-      );
+      void **retval);
+#ifdef DEBUG
+#       define ez_pthread_join(...) \
+         _ez_pthread_join(__FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#       define ez_pthread_join(...) \
+         _ez_pthread_join(__VA_ARGS__)
+#endif
 
 #ifdef __cplusplus
 }
