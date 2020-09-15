@@ -17,7 +17,6 @@ src := \
        cntry.c \
        dynstack.c \
        es.c \
-       ez_es.c \
        ez_libc.c \
        ez_libdb.c \
        ez_libpthread.c \

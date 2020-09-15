@@ -99,7 +99,7 @@ ez_proto (z_off_t, gzseek,
    _ez_gzseek(__VA_ARGS__)
 #endif
 
-ez_proto (z_off_t, _ez_gztell,
+ez_proto (z_off_t, gztell,
       gzFile file);
 #ifdef DEBUG
 #       define ez_gztell(...) \

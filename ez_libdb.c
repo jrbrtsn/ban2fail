@@ -23,7 +23,7 @@
 #include "ez_libdb.h"
 
 /***************************************************/
-ez_proto (int, create,
+ez_proto (int, db_create,
       DB **dbp,
       DB_ENV *dbenv,
       u_int32_t flags)

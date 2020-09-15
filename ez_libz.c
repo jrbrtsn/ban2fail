@@ -214,7 +214,7 @@ ez_proto (char*, gzgets,
 }
 
 /***************************************************/
-ez_proto (z_off_t, _ez_gztell,
+ez_proto (z_off_t, gztell,
       gzFile file)
 {
    z_off_t rtn= gztell(file);
