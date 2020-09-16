@@ -21,8 +21,8 @@ entries which exist somewhere in the logfile history for given address(es).
 
 + Easily handles hundreds of thousands of blocked IP addresses.
 
-+ Directly calls iptables, and handles filtering rules in batches of 100 per
-call.
++ Directly calls iptables, and handles filtering rules in one fell swoop using
+fork() & execve() calls.
 
 + Provides integrated reporting with reverse and forward DNS information.
 
