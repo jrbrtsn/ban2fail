@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "ban2fail.h"
@@ -145,10 +146,160 @@ addrCmp_pvsort(const void *const* pp1, const void *const* pp2)
    return 0;
 }
 
+#if 0
 static int
-_control_addresses(int cmdFlag, PTRVEC *h_vec, unsigned batch_sz)
+run_command(const char *argv[])
 /**************************************************************
- * (Un)block addresses in batches of batch_sz.
+ * Run a command given argv using fork() and execve(). Wait
+ * for command to finish.
+ */
+{
+   int out[2];
+
+   /* Create a connected pipe for output from command */
+   ez_pipe(out);
+
+   // Parent will read from out[0];
+
+   // Create child process
+   pid_t child_pid= ez_fork();
+
+   if(!child_pid) { // Child process
+
+      // Close useless end of pipe
+      ez_close(out[0]);
+
+      // Attach  standard outputs to our pipe
+      ez_dup2(out[1], STDOUT_FILENO);
+      ez_dup2(out[1], STDERR_FILENO);
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
+      // Execute command
+      ez_execve(argv[0], argv, environ);
+      // We will never get to here
+#pragma GCC diagnostic pop
+   }
+
+#define BUF_SZ 1024
+   // Read buffer
+   static char buf[BUF_SZ];
+
+   // Loop reading data from child's output
+   ssize_t nRead;
+   while(0 < (nRead= read(out[0], buf, BUF_SZ-1))) {
+      // read() error
+      if(-1 == nRead) {
+         sys_eprintf("ERROR: read()");
+         break;
+      }
+
+      // pipe closed
+      if(!nRead)
+         break;
+
+      // Relay to our stderr
+      ez_write(STDERR_FILENO, buf, nRead);
+
+   }
+#undef BUF_SZ
+
+   if(-1 == nRead)
+         sys_eprintf("ERROR: read()");
+
+   /* Wait indefinitely for child to finish */
+   int wstatus;
+   pid_t rc= waitpid(child_pid, &wstatus, 0);
+
+   // Proper exit
+   if(WIFEXITED(wstatus))
+      return WEXITSTATUS(wstatus);
+
+   // Killed with signal
+   if(WIFSIGNALED(wstatus)) {
+      eprintf("ERROR: %s killed by signal: %s", argv[0], strsignal(WTERMSIG(wstatus)));
+      return -1;
+   }
+
+   // Shouldn't ever get here
+   assert(0);
+}
+#endif
+static int
+run_command(const char *argv[])
+/**************************************************************
+ * Run a command given argv using fork() and execve(). Wait
+ * for command to finish.
+ */
+{
+   int out[2];
+
+   /* Create a connected pipe for output from command */
+   ez_pipe(out);
+
+   // Parent will read from out[0];
+
+   // Create child process
+   pid_t child_pid= ez_fork();
+
+   if(!child_pid) { // Child process
+
+      // Close useless end of pipe
+      ez_close(out[0]);
+
+      // Attach  standard outputs to our pipe
+      ez_dup2(out[1], STDOUT_FILENO);
+      ez_dup2(out[1], STDERR_FILENO);
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
+      // Execute command
+      ez_execve(argv[0], argv, environ);
+      // We will never get to here
+#pragma GCC diagnostic pop
+   }
+
+   // Close useless end of pipe
+   ez_close(out[1]);
+
+#define BUF_SZ 1024
+   // Read buffer
+   static char buf[BUF_SZ];
+
+   // Loop reading data from child's output
+   ssize_t nRead;
+   while(0 < (nRead= read(out[0], buf, BUF_SZ-1))) {
+      // Relay to our stderr
+      ez_write(STDERR_FILENO, buf, nRead);
+
+   }
+#undef BUF_SZ
+
+   if(-1 == nRead)
+         sys_eprintf("ERROR: read()");
+
+   /* Wait indefinitely for child to finish */
+   int wstatus;
+   pid_t rc= waitpid(child_pid, &wstatus, 0);
+
+   // Proper exit
+   if(WIFEXITED(wstatus))
+      return WEXITSTATUS(wstatus);
+
+   // Killed with signal
+   if(WIFSIGNALED(wstatus)) {
+      eprintf("ERROR: %s killed by signal: %s", argv[0], strsignal(WTERMSIG(wstatus)));
+      return -1;
+   }
+
+   // Shouldn't ever get here
+   assert(0);
+}
+
+static int
+_control_addresses(const char *cmdFlag, PTRVEC *h_vec)
+/**************************************************************
+ * (Un)block addresses.
  */
 {
    if(!S.is_init)
@@ -156,86 +307,80 @@ _control_addresses(int cmdFlag, PTRVEC *h_vec, unsigned batch_sz)
 
    int rtn= -1;
 
-   /* Sanity check for debugging */
-   assert(batch_sz > 0 && batch_sz <= 100);
+   // Need a large string buffer for comma separated address list
+   static STR addr_sb;
+   STR_sinit(&addr_sb, N_ADDRESSES_HINT*20);
 
-   /* Use string buffer to form command */
-   static STR cmd_sb;
+   // argv always same length, with NULL at the end
+   static const char *argv[8];
+
+   /**************************************************************************/
+   /**************** ip4 addresses *******************************************/
+   /**************************************************************************/
+   /* Name of executable file */
+   argv[0]= IPTABLES;
+
+   /* iptables command string begins like this */
+   argv[1]= cmdFlag;
+   argv[2]= "INPUT";
+   argv[3]= "-s";
 
    const char *addr;
 
-   /* Put any ipv6 addresses at end */
+   /* Move any ipv6 addresses to the end */
    PTRVEC_sort(h_vec, addrCmp_pvsort);
 
-   /* Work through ipv4 addresses in the vector */
-   while((addr= PTRVEC_remHead(h_vec)) &&
-         !strchr(addr, ':'))
+   /* Place comma separated address list into single string buffer */
+   for(unsigned i= 0;
+       (addr= PTRVEC_remHead(h_vec)) && !strchr(addr, ':');
+       ++i)
    {
-      /* Initialize / reset string buffer */
-      STR_sinit(&cmd_sb, 256+batch_sz*42);
+      /* Need comma after 1st address */
+      if(i)
+         STR_append(&addr_sb, ",", 1);
 
-      /* Beginning of command string, with first source address */
-      STR_sprintf(&cmd_sb, IPTABLES " 2>&1 -%c INPUT -s %s", cmdFlag, addr);
+      /* Put address in place */
+      STR_append(&addr_sb, addr, -1);
 
-      /* Append additional source addresses */
-      unsigned i= 1;
-      while(i < batch_sz &&
-            (addr= PTRVEC_remHead(h_vec)) &&
-            !strchr(addr, ':'))
-      {
-         /* employ multiple source addresses for batching */
-         STR_sprintf(&cmd_sb, ",%s", addr);
-         ++i;
-      }
+   }
+   // Place string buffer in argv
+   argv[4]= STR_str(&addr_sb);
+   argv[5]= "-j";
+   argv[6]= "DROP";
 
-      /* Put the end of the command in place */
-      STR_sprintf(&cmd_sb, " -j DROP");
-
-      /* Run iptables */
-      FILE *fh= ez_popen(STR_str(&cmd_sb), "r");
-      /* Display any output from iptables */
-      static char lbuf[1024];
-      while(ez_fgets(lbuf, sizeof(lbuf), fh))
-         ez_fprintf(stderr, "NOTE: iptables output: %s", lbuf);
-
-      /* All done */
-      ez_pclose(fh);
-
-      /* If the last address pulled was ipv6, move on */
-      if(addr && strchr(addr, ':')) break;
+   // Run iptables
+   if(run_command(argv)) {
+      eprintf("ERROR: run_command() failed.");
+      goto abort;
    }
 
+   /**************************************************************************/
+   /**************** ip6 addresses *******************************************/
+   /**************************************************************************/
+
+   argv[0]= IP6TABLES;
+   // Load up ipv6 addresses in string buffer
+   STR_reset(&addr_sb);
+
    /* Work through ipv6 addresses in the vector */
-   for( ; addr; (addr= PTRVEC_remHead(h_vec))) {
+   for(unsigned i= 0 ; addr; (addr= PTRVEC_remHead(h_vec)), ++i) {
 
-      /* Initialize / reset string buffer */
-      STR_sinit(&cmd_sb, 256+batch_sz*42);
+      /* Need comma after 1st address */
+      if(i)
+         STR_append(&addr_sb, ",", 1);
 
-      /* Beginning of command string, with first source address */
-      STR_sprintf(&cmd_sb, IP6TABLES " 2>&1 -%c INPUT -s %s", cmdFlag, addr);
+      /* Put address in place */
+      STR_append(&addr_sb, addr, -1);
 
-      /* Append additional source addresses */
-      unsigned i= 1;
-      while(i < batch_sz && (addr= PTRVEC_remHead(h_vec))) {
+   }
 
-         /* employ multiple source addresses for batching */
-         STR_sprintf(&cmd_sb, ",%s", addr);
-         ++i;
-      }
+   // Address list is the only thing that changed
+   argv[4]= STR_str(&addr_sb);
 
-      /* Put the end of the command in place */
-      STR_sprintf(&cmd_sb, " -j DROP");
-
-      /* Run iptables */
-      FILE *fh= ez_popen(STR_str(&cmd_sb), "r");
-      /* Display any output from iptables */
-      static char lbuf[1024];
-      while(ez_fgets(lbuf, sizeof(lbuf), fh))
-         ez_fprintf(stderr, "NOTE: ip6tables output: %s", lbuf);
-
-      /* All done */
-      ez_pclose(fh);
-
+   // Run iptables
+   if(run_command(argv)) {
+      eprintf("ERROR: run_command() failed.");
+      goto abort;
    }
 
    rtn= 0;
@@ -244,28 +389,28 @@ abort:
 }
 
 int
-IPTABLES_block_addresses(PTRVEC *h_vec, unsigned batch_sz)
+IPTABLES_block_addresses(PTRVEC *h_vec)
 /**************************************************************
- * Block addresses in batches of batch_sz.
+ * Block addresses.
  */
 {
    if(!S.is_init)
       initialize();
 
-   return _control_addresses('A', h_vec, batch_sz);
+   return _control_addresses("-A", h_vec);
 
 }
 
 int
-IPTABLES_unblock_addresses(PTRVEC *h_vec, unsigned batch_sz)
+IPTABLES_unblock_addresses(PTRVEC *h_vec)
 /**************************************************************
- * Block addresses in batches of batch_sz.
+ * Unblock addresses.
  */
 {
    if(!S.is_init)
       initialize();
 
-   return _control_addresses('D', h_vec, batch_sz);
+   return _control_addresses("-D", h_vec);
 
 }
 

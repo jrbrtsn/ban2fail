@@ -36,7 +36,7 @@
  * work with a much larger number.  The command line maximum
  * is something like 200K characters.
  */
-#define IPTABLES_BATCH_SZ 100
+//#define IPTABLES_BATCH_SZ 100
 
 /* For sizing maps and vectors, this a starting point */
 #define N_ADDRESSES_HINT 10000

@@ -37,15 +37,15 @@ IPTABLES_is_currently_blocked(const char *addr);
  */
 
 int
-IPTABLES_block_addresses(PTRVEC *h_vec, unsigned batch_sz);
+IPTABLES_block_addresses(PTRVEC *h_vec);
 /**************************************************************
- * Block addresses in batches of batch_sz.
+ * Block addresses.
  */
 
 int
-IPTABLES_unblock_addresses(PTRVEC *h_vec, unsigned batch_sz);
+IPTABLES_unblock_addresses(PTRVEC *h_vec);
 /**************************************************************
- * Unblock addresses in batches of batch_sz.
+ * Unblock addresses.
  */
 
 int

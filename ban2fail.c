@@ -92,7 +92,7 @@ struct Global G= {
    .version= {
       .major= 0,
       .minor= 14,
-      .patch= 0
+      .patch= 1
    },
 
    .bitTuples.flags= GlobalFlagBitTuples
@@ -143,7 +143,6 @@ static struct {
 /*==================================================================*/
 /*======================== main() ==================================*/
 /*==================================================================*/
-
 /* Enums for long options */
 enum {
    VERSION_OPT_ENUM=128, /* Larger than any printable character */
@@ -614,7 +613,7 @@ main(int argc, char **argv)
 
          if(n2Block) {
 
-            if(IPTABLES_block_addresses(&S.toBlock_vec, 10)) {
+            if(IPTABLES_block_addresses(&S.toBlock_vec)) {
                eprintf("ERROR: cannot block addresses!");
                goto abort;
             }
@@ -623,7 +622,7 @@ main(int argc, char **argv)
 
          if(n2Unblock) {
 
-            if(IPTABLES_unblock_addresses(&S.toUnblock_vec, 10)) {
+            if(IPTABLES_unblock_addresses(&S.toUnblock_vec)) {
                eprintf("ERROR: cannot unblock addresses!");
                goto abort;
             }
