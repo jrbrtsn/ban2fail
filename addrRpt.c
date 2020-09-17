@@ -101,7 +101,7 @@ AddrRPT_destructor(AddrRPT *self)
    while((m= PTRVEC_remHead(&self->match_vec)))
       Match_destroy(m);
 
-   PTRVEC_destroy(&self->match_vec);
+   PTRVEC_destructor(&self->match_vec);
    return self;
 }
 
