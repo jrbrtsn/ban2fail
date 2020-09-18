@@ -146,7 +146,6 @@ addrCmp_pvsort(const void *const* pp1, const void *const* pp2)
    return 0;
 }
 
-#if 0
 static int
 run_command(const char *argv[])
 /**************************************************************
@@ -154,90 +153,23 @@ run_command(const char *argv[])
  * for command to finish.
  */
 {
-   int out[2];
+#ifdef DEBUG
+   { // Print argv[] to stderr
+      ez_fprintf(stderr, "argv[]= {\n");
+      const char **ppstr;
+      for(ppstr= argv; *ppstr; ++ppstr)
+         ez_fprintf(stderr, "\t%s\n", *ppstr);
 
-   /* Create a connected pipe for output from command */
-   ez_pipe(out);
-
-   // Parent will read from out[0];
-
-   // Create child process
-   pid_t child_pid= ez_fork();
-
-   if(!child_pid) { // Child process
-
-      // Close useless end of pipe
-      ez_close(out[0]);
-
-      // Attach  standard outputs to our pipe
-      ez_dup2(out[1], STDOUT_FILENO);
-      ez_dup2(out[1], STDERR_FILENO);
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
-      // Execute command
-      ez_execve(argv[0], argv, environ);
-      // We will never get to here
-#pragma GCC diagnostic pop
+      ez_fputs("}\n", stderr);
+      ez_fflush(stderr);
    }
-
-#define BUF_SZ 1024
-   // Read buffer
-   static char buf[BUF_SZ];
-
-   // Loop reading data from child's output
-   ssize_t nRead;
-   while(0 < (nRead= read(out[0], buf, BUF_SZ-1))) {
-      // read() error
-      if(-1 == nRead) {
-         sys_eprintf("ERROR: read()");
-         break;
-      }
-
-      // pipe closed
-      if(!nRead)
-         break;
-
-      // Relay to our stderr
-      ez_write(STDERR_FILENO, buf, nRead);
-
-   }
-#undef BUF_SZ
-
-   if(-1 == nRead)
-         sys_eprintf("ERROR: read()");
-
-   /* Wait indefinitely for child to finish */
-   int wstatus;
-   pid_t rc= waitpid(child_pid, &wstatus, 0);
-
-   // Proper exit
-   if(WIFEXITED(wstatus))
-      return WEXITSTATUS(wstatus);
-
-   // Killed with signal
-   if(WIFSIGNALED(wstatus)) {
-      eprintf("ERROR: %s killed by signal: %s", argv[0], strsignal(WTERMSIG(wstatus)));
-      return -1;
-   }
-
-   // Shouldn't ever get here
-   assert(0);
-}
 #endif
-static int
-run_command(const char *argv[])
-/**************************************************************
- * Run a command given argv using fork() and execve(). Wait
- * for command to finish.
- */
-{
-   int out[2];
+   int out_pipe[2];
 
    /* Create a connected pipe for output from command */
-   ez_pipe(out);
+   ez_pipe(out_pipe);
 
-   // Parent will read from out[0];
+   // Parent will read from out_pipe[0];
 
    // Create child process
    pid_t child_pid= ez_fork();
@@ -245,11 +177,11 @@ run_command(const char *argv[])
    if(!child_pid) { // Child process
 
       // Close useless end of pipe
-      ez_close(out[0]);
+      ez_close(out_pipe[0]);
 
       // Attach  standard outputs to our pipe
-      ez_dup2(out[1], STDOUT_FILENO);
-      ez_dup2(out[1], STDERR_FILENO);
+      ez_dup2(out_pipe[1], STDOUT_FILENO);
+      ez_dup2(out_pipe[1], STDERR_FILENO);
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
@@ -260,7 +192,7 @@ run_command(const char *argv[])
    }
 
    // Close useless end of pipe
-   ez_close(out[1]);
+   ez_close(out_pipe[1]);
 
 #define BUF_SZ 1024
    // Read buffer
@@ -268,11 +200,10 @@ run_command(const char *argv[])
 
    // Loop reading data from child's output
    ssize_t nRead;
-   while(0 < (nRead= read(out[0], buf, BUF_SZ-1))) {
+   while(0 < (nRead= read(out_pipe[0], buf, BUF_SZ-1)))
       // Relay to our stderr
       ez_write(STDERR_FILENO, buf, nRead);
 
-   }
 #undef BUF_SZ
 
    if(-1 == nRead)
@@ -330,57 +261,62 @@ _control_addresses(const char *cmdFlag, PTRVEC *h_vec)
    /* Move any ipv6 addresses to the end */
    PTRVEC_sort(h_vec, addrCmp_pvsort);
 
-   /* Place comma separated address list into single string buffer */
-   for(unsigned i= 0;
-       (addr= PTRVEC_remHead(h_vec)) && !strchr(addr, ':');
-       ++i)
-   {
-      /* Need comma after 1st address */
-      if(i)
-         STR_append(&addr_sb, ",", 1);
+   { /* Place comma separated address list into single string buffer */
+      unsigned i;
+      for(i= 0;
+          (addr= PTRVEC_remHead(h_vec)) && !strchr(addr, ':');
+          ++i)
+      {
+         /* Need comma after 1st address */
+         if(i)
+            STR_append(&addr_sb, ",", 1);
 
-      /* Put address in place */
-      STR_append(&addr_sb, addr, -1);
+         /* Put address in place */
+         STR_append(&addr_sb, addr, -1);
 
-   }
-   // Place string buffer in argv
-   argv[4]= STR_str(&addr_sb);
-   argv[5]= "-j";
-   argv[6]= "DROP";
+      }
+      // Place string buffer in argv
+      argv[4]= STR_str(&addr_sb);
+      argv[5]= "-j";
+      argv[6]= "DROP";
 
-   // Run iptables
-   if(run_command(argv)) {
-      eprintf("ERROR: run_command() failed.");
-      goto abort;
+      // Run iptables
+      if(i && run_command(argv)) {
+         eprintf("ERROR: run_command() failed.");
+         goto abort;
+      }
    }
 
    /**************************************************************************/
    /**************** ip6 addresses *******************************************/
    /**************************************************************************/
 
-   argv[0]= IP6TABLES;
-   // Load up ipv6 addresses in string buffer
-   STR_reset(&addr_sb);
+   { // ipv6 addresses
+      argv[0]= IP6TABLES;
+      // Load up ipv6 addresses in string buffer
+      STR_reset(&addr_sb);
 
-   /* Work through ipv6 addresses in the vector */
-   for(unsigned i= 0 ; addr; (addr= PTRVEC_remHead(h_vec)), ++i) {
+      /* Work through ipv6 addresses in the vector */
+      unsigned i;
+      for(i= 0 ; addr; (addr= PTRVEC_remHead(h_vec)), ++i) {
 
-      /* Need comma after 1st address */
-      if(i)
-         STR_append(&addr_sb, ",", 1);
+         /* Need comma after 1st address */
+         if(i)
+            STR_append(&addr_sb, ",", 1);
 
-      /* Put address in place */
-      STR_append(&addr_sb, addr, -1);
+         /* Put address in place */
+         STR_append(&addr_sb, addr, -1);
 
-   }
+      }
 
-   // Address list is the only thing that changed
-   argv[4]= STR_str(&addr_sb);
+      // Address list is the only thing that changed
+      argv[4]= STR_str(&addr_sb);
 
-   // Run iptables
-   if(run_command(argv)) {
-      eprintf("ERROR: run_command() failed.");
-      goto abort;
+      // Run iptables
+      if(i && run_command(argv)) {
+         eprintf("ERROR: run_command() failed.");
+         goto abort;
+      }
    }
 
    rtn= 0;
