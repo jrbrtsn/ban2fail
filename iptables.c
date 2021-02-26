@@ -320,14 +320,12 @@ _control_addresses(const char *cmdFlag, PTRVEC *h_vec)
 
    { // ipv6 addresses
       argv[0]= IP6TABLES;
-      // Load up ipv6 addresses in string buffer
+      // Prepare to load up ipv6 addresses in string buffer
       STR_reset(&addr_sb);
-      
+
       unsigned naddr= 0;
 
-      do { /* Work through ipv6 addresses in the vector */
-
-         addr= PTRVEC_remHead(h_vec);
+      for(;;) { /* Work through ipv6 addresses in the vector */
 
          if(addr) {
             /* Need comma after 1st address */
@@ -336,10 +334,16 @@ _control_addresses(const char *cmdFlag, PTRVEC *h_vec)
 
             /* Put address in place */
             STR_append(&addr_sb, addr, -1);
+
+            /* Note that we will use this address */
+            ++naddr;
          }
+         
+         /* See if there is another address */
+         addr= PTRVEC_remHead(h_vec);
 
          /* Keep adding addresses until we bump up against iptables maximum,
-          * or run out of ipv4 addresses
+          * or run out of addresses
           */
          if(!naddr || (naddr < IPTABLES_MAX_ADDR && addr)) 
             continue;
@@ -351,11 +355,14 @@ _control_addresses(const char *cmdFlag, PTRVEC *h_vec)
             goto abort;
          }
 
+         /* Bail out now if we are done with the list */
+         if(!addr)
+            break;
+
          /* Reset for next command */
          naddr= 0;
          STR_reset(&addr_sb);
-
-      } while(addr);
+      }
    }
 
    rtn= 0;
