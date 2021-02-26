@@ -342,6 +342,10 @@ _control_addresses(const char *cmdFlag, PTRVEC *h_vec)
          /* See if there is another address */
          addr= PTRVEC_remHead(h_vec);
 
+         /* Break out if nthing remains */
+         if(!addr && !naddr)
+            break;
+
          /* Keep adding addresses until we bump up against iptables maximum,
           * or run out of addresses
           */
