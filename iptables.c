@@ -270,6 +270,15 @@ _control_addresses(const char *cmdFlag, PTRVEC *h_vec)
 
    /* Move any ipv6 addresses to the end */
    PTRVEC_sort(h_vec, addrCmp_pvsort);
+#ifdef DEBUG
+{
+   const char *addr;
+   unsigned i;
+   PTRVEC_loopFwd(h_vec, i, addr) {
+      eprintf("%s", addr);
+   }
+}
+#endif
 
    { /* Place comma separated address list into single string buffer */
       const char *colon=NULL;
@@ -298,7 +307,7 @@ _control_addresses(const char *cmdFlag, PTRVEC *h_vec)
          /* Keep adding addresses until we bump up against iptables maximum,
           * or run out of ipv4 addresses
           */
-         if(!naddr || (naddr < IPTABLES_MAX_ADDR && !colon)) 
+         if(!naddr || (naddr < IPTABLES_MAX_ADDR && (addr && !colon))) 
             continue;
 
          // Place string buffer in argv
@@ -342,7 +351,7 @@ _control_addresses(const char *cmdFlag, PTRVEC *h_vec)
          /* See if there is another address */
          addr= PTRVEC_remHead(h_vec);
 
-         /* Break out if nthing remains */
+         /* Break out if nothing remains */
          if(!addr && !naddr)
             break;
 
