@@ -27,9 +27,16 @@
 #include "ban2fail.h"
 #include "ez_libc.h"
 #include "iptables.h"
-#include "offEntry.h"
+#include "limits.h"
 #include "map.h"
+#include "offEntry.h"
 #include "util.h"
+
+/* JDR Fri 26 Feb 2021 09:37:59 AM EST
+ * it appears that iptables has a limit on how many
+ * addresses it will handle in a single command.
+ */
+#define IPTABLES_MAX_ADDR 9000
 
 static struct {
 
@@ -255,36 +262,56 @@ _control_addresses(const char *cmdFlag, PTRVEC *h_vec)
    argv[1]= cmdFlag;
    argv[2]= "INPUT";
    argv[3]= "-s";
+   /* argv[4] supplied below */
+   argv[5]= "-j";
+   argv[6]= "DROP";
 
-   const char *addr;
+   const char *addr= NULL;
 
    /* Move any ipv6 addresses to the end */
    PTRVEC_sort(h_vec, addrCmp_pvsort);
 
    { /* Place comma separated address list into single string buffer */
-      unsigned i;
-      for(i= 0;
-          (addr= PTRVEC_remHead(h_vec)) && !strchr(addr, ':');
-          ++i)
-      {
-         /* Need comma after 1st address */
-         if(i)
-            STR_append(&addr_sb, ",", 1);
+      const char *colon=NULL;
+      unsigned naddr= 0;
 
-         /* Put address in place */
-         STR_append(&addr_sb, addr, -1);
+      do {
 
-      }
-      // Place string buffer in argv
-      argv[4]= STR_str(&addr_sb);
-      argv[5]= "-j";
-      argv[6]= "DROP";
+         addr= PTRVEC_remHead(h_vec);
+         if(addr)
+            colon= strchr(addr, ':');
 
-      // Run iptables
-      if(i && run_command(argv)) {
-         eprintf("ERROR: run_command() failed.");
-         goto abort;
-      }
+         /* We have an ipv4 address */
+         if(addr && !colon) {
+
+            /* Need comma after 1st address */
+            if(naddr)
+               STR_append(&addr_sb, ",", 1);
+
+            /* Put address in buffer */
+            STR_append(&addr_sb, addr, -1);
+
+            /* Note we will use this address */
+            ++naddr;
+         }
+
+         /* Keep adding addresses until we bump up against iptables maximum,
+          * or run out of ipv4 addresses
+          */
+         if(!naddr || (naddr < IPTABLES_MAX_ADDR && !colon)) 
+            continue;
+
+         // Place string buffer in argv
+         argv[4]= STR_str(&addr_sb);
+         if(run_command(argv)) {
+            eprintf("ERROR: run_command() failed.");
+            goto abort;
+         }
+         /* Reset for next command */
+         naddr= 0;
+         STR_reset(&addr_sb);
+
+      } while(addr && !colon);
    }
 
    /**************************************************************************/
@@ -295,28 +322,40 @@ _control_addresses(const char *cmdFlag, PTRVEC *h_vec)
       argv[0]= IP6TABLES;
       // Load up ipv6 addresses in string buffer
       STR_reset(&addr_sb);
+      
+      unsigned naddr= 0;
 
-      /* Work through ipv6 addresses in the vector */
-      unsigned i;
-      for(i= 0 ; addr; (addr= PTRVEC_remHead(h_vec)), ++i) {
+      do { /* Work through ipv6 addresses in the vector */
 
-         /* Need comma after 1st address */
-         if(i)
-            STR_append(&addr_sb, ",", 1);
+         addr= PTRVEC_remHead(h_vec);
 
-         /* Put address in place */
-         STR_append(&addr_sb, addr, -1);
+         if(addr) {
+            /* Need comma after 1st address */
+            if(naddr)
+               STR_append(&addr_sb, ",", 1);
 
-      }
+            /* Put address in place */
+            STR_append(&addr_sb, addr, -1);
+         }
 
-      // Address list is the only thing that changed
-      argv[4]= STR_str(&addr_sb);
+         /* Keep adding addresses until we bump up against iptables maximum,
+          * or run out of ipv4 addresses
+          */
+         if(!naddr || (naddr < IPTABLES_MAX_ADDR && addr)) 
+            continue;
 
-      // Run iptables
-      if(i && run_command(argv)) {
-         eprintf("ERROR: run_command() failed.");
-         goto abort;
-      }
+         // Place string buffer in argv
+         argv[4]= STR_str(&addr_sb);
+         if(run_command(argv)) {
+            eprintf("ERROR: run_command() failed.");
+            goto abort;
+         }
+
+         /* Reset for next command */
+         naddr= 0;
+         STR_reset(&addr_sb);
+
+      } while(addr);
    }
 
    rtn= 0;
