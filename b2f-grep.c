@@ -309,9 +309,13 @@ MpAddr_inetAssign(MpAddr *self, const char *addrStr)
    int rtn= -1;
 
    char hex_buf[33];
+   unsigned nBytes;
    unsigned char buf[sizeof(struct in6_addr)];
 
+   /* Determine if this is ipv6 or ipv6 */
    self->domain= strchr(addrStr, ':') ? AF_INET6 : AF_INET;
+
+   /* Convert to a big-endian integer of 4 or 16 bytes */
    int rc= inet_pton(self->domain, addrStr, buf);
    switch(rc) {
       case -1:
@@ -325,38 +329,25 @@ MpAddr_inetAssign(MpAddr *self, const char *addrStr)
 
 
    /* At this point we have the address as an integer in big-endian order in buf */
-
    switch(self->domain) {
 
       case AF_INET:
-         snprintf(hex_buf, sizeof(hex_buf), "%hhu%hhu%hhu%hhu", buf[0], buf[1], buf[2], buf[3]);
+         nBytes= 4;
          break;
 
       case AF_INET6:
-         snprintf(hex_buf, sizeof(hex_buf), "%hhu%hhu%hhu%hhu%hhu%hhu%hhu%hhu%hhu%hhu%hhu%hhu%hhu%hhu%hhu%hhu"
-               , buf[0]
-               , buf[1]
-               , buf[2]
-               , buf[3]
-               , buf[4]
-               , buf[5]
-               , buf[6]
-               , buf[7]
-               , buf[8]
-               , buf[9]
-               , buf[10]
-               , buf[11]
-               , buf[12]
-               , buf[13]
-               , buf[14]
-               , buf[15]
-               );
+         nBytes= 16;
          break;
 
       default:
          assert(0);
    }
 
+   /* Convert big-endian integer we have in buf[] to hexidecimal string */
+   for(unsigned i= 0; i < nBytes; ++i)
+      snprintf(hex_buf+2*i, sizeof(hex_buf) - 2*i, "%02hhu", buf[i]);
+
+   /* Set multi-precision integer to hex string value */
    rc= mpz_set_str(self->addr, hex_buf, 16);
    if(-1 == rc) {
       eprintf("ERROR: \"%s\" not recognized as hexidecimal integer.", hex_buf);
