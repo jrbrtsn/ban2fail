@@ -2,7 +2,7 @@ baseDir := ~
 libsDir := $(baseDir)/libs
 projectName := ban2fail
 versions := debug release
-cc_exe := ban2fail fsckdns
+cc_exe := ban2fail b2f-grep
 #install_dir := /usr/local/bin
 
 ########################################
@@ -36,8 +36,20 @@ src := \
        timestamp.c \
        util.c \
 
-   libs := z crypto GeoIP pthread db
+   libs += z crypto GeoIP pthread db
 endif
+
+ifeq ($(exe), b2f-grep)
+src := \
+       ez_libc.c \
+       b2f-grep.c \
+       ptrvec.c \
+       str.c \
+       util.c \
+
+   libs += gmp
+endif
+
 
 ifeq ($(exe), fsckdns)
 src := \

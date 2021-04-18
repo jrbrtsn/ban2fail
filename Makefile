@@ -2,7 +2,7 @@ baseDir := ~
 libsDir := $(baseDir)/libs
 projectName := ban2fail
 versions := debug release
-cc_exe := ban2fail fsckdns
+cc_exe := ban2fail b2f-grep
 #install_dir := /usr/local/bin
 
 ########################################
@@ -36,8 +36,20 @@ src := \
        timestamp.c \
        util.c \
 
-   libs := z crypto GeoIP pthread db
+   libs += z crypto GeoIP pthread db
 endif
+
+ifeq ($(exe), b2f-grep)
+src := \
+       ez_libc.c \
+       b2f-grep.c \
+       ptrvec.c \
+       str.c \
+       util.c \
+
+   libs += gmp
+endif
+
 
 ifeq ($(exe), fsckdns)
 src := \
@@ -70,15 +82,15 @@ ifndef version
 all :  debug release
 debug  :
 	@$(MAKE) version=debug exe=ban2fail mainType=CC --no-builtin-rules -f $(makefile) --no-print-directory
-	@$(MAKE) version=debug exe=fsckdns mainType=CC --no-builtin-rules -f $(makefile) --no-print-directory
+	@$(MAKE) version=debug exe=b2f-grep mainType=CC --no-builtin-rules -f $(makefile) --no-print-directory
 release  :
 	@$(MAKE) version=release exe=ban2fail mainType=CC --no-builtin-rules -f $(makefile) --no-print-directory
-	@$(MAKE) version=release exe=fsckdns mainType=CC --no-builtin-rules -f $(makefile) --no-print-directory
+	@$(MAKE) version=release exe=b2f-grep mainType=CC --no-builtin-rules -f $(makefile) --no-print-directory
 install : release
 	@strip release/ban2fail
 	@[ $(install_dir)_foo = _foo ] || cp release/ban2fail $(install_dir)/
-	@strip release/fsckdns
-	@[ $(install_dir)_foo = _foo ] || cp release/fsckdns $(install_dir)/
+	@strip release/b2f-grep
+	@[ $(install_dir)_foo = _foo ] || cp release/b2f-grep $(install_dir)/
 	@[ -e install.sh ] && INSTALLDIR=$(install_dir) INSTALLTYPE=$(install_type) sudo ./install.sh
 uninstall :
 clean :
