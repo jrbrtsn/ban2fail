@@ -67,12 +67,10 @@ static int MpAddr_lt(const MpAddr *self, const MpAddr *other);
   ((p)=(Entry_constructor((p)=malloc(sizeof(Entry)), addr) ? (p) : ( p ? realloc(Entry_destructor(p),0) : 0 )))
 static Entry* Entry_constructor(Entry *self, const char *addr);
 static void* Entry_destructor(Entry *self);
-//static int Entry_isSameFamily(const Entry *self, const MpAddr *mp_addr);
 static int Entry_is_closer(const Entry *self, const MpAddr *mp_addr);
 static int Entry_lineno_cmp(const void *const*pp1, const void *const* pp2);
 static void Entry_print(const Entry *self);
 static void Entry_register(Entry *self, unsigned lineno, const MpAddr *mp_addr);
-//static MpAddr* Entry_get_prox(const Entry *self, MpAddr *rtn, const MpAddr *other);
 
 /*==================================================================*/
 /*========================= static data ============================*/
@@ -96,7 +94,7 @@ static struct {
    .version= {
       .major= 0,
       .minor= 0,
-      .patch= 0
+      .patch= 2
    }
 };
 
@@ -308,7 +306,7 @@ MpAddr_inetAssign(MpAddr *self, const char *addrStr)
 {
    int rtn= -1;
 
-   char hex_buf[33];
+   static char hex_buf[33];
    unsigned nBytes;
    unsigned char buf[sizeof(struct in6_addr)];
 
@@ -345,7 +343,7 @@ MpAddr_inetAssign(MpAddr *self, const char *addrStr)
 
    /* Convert big-endian integer we have in buf[] to hexidecimal string */
    for(unsigned i= 0; i < nBytes; ++i)
-      snprintf(hex_buf+2*i, sizeof(hex_buf) - 2*i, "%02hhu", buf[i]);
+      snprintf(hex_buf+2*i, sizeof(hex_buf) - 2*i, "%02hhx", buf[i]);
 
    /* Set multi-precision integer to hex string value */
    rc= mpz_set_str(self->addr, hex_buf, 16);
@@ -453,8 +451,9 @@ Entry_print(const Entry *self)
  */
 {
    unsigned lineno= MAX(self->lineno, 1);
-   if(MpAddr_cmp(&self->mp_addr, &self->mp_closest_addr))
-      --lineno;
+   switch(MpAddr_cmp(&self->mp_addr, &self->mp_closest_addr)) {
+      case -1: --lineno;
+   }
    ez_fprintf(stdout, "%u", lineno);
 }
 
@@ -491,6 +490,7 @@ Entry_register(Entry *self, unsigned lineno, const MpAddr *mp_addr)
    MpAdd_absDiff(&prox, &self->mp_addr, mp_addr);
 
    if(!self->lineno || 0 < MpAddr_cmp(&self->mp_closest_prox, &prox)) {
+//   if(!self->lineno || 0 > MpAddr_cmp(&prox, &self->mp_closest_prox)) {
       self->lineno= lineno;
       MpAddr_assign(&self->mp_closest_addr, mp_addr);
       MpAddr_assign(&self->mp_closest_prox, &prox);
